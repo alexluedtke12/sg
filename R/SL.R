@@ -1,0 +1,83 @@
+
+#' SuperLearner for Estimating the Conditional Average Treatment Effect
+#' 
+#' @description
+#' This function estimates the average treatment effect conditional on baseline covariates.
+#' @details
+#' If outcome is bounded in [0,1], then this functions respects that fact when estimating the outcome regression but not when estimating the conditional average treatment effect using the double robust loss presented in the below cited paper. Loss functions exist which do respect the bounds on the outcome (see the below cited paper), but we have not implemented them here.
+#' @keywords SuperLearner, conditional average treatment effect, blip function
+#' @param W data frame with observations in the rows and baseline covariates used to form the subgroup in columns.
+#' @param A binary treatment vector, where 1 indicates that an individual was treated.
+#' @param Y real-valued outcome.
+#' @param SL.library SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate outcome regression, treatment mechanism (if unknown), and conditional average treatment effect function.
+#' @param g0 if known (as in a randomized controlled trial), a vector of probabilities of treatment A=1 given covariates. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.
+#' @param family \code{binomial()} if outcome bounded in [0,1], or \code{gaussian()} otherwise. See \code{Details}.
+#' @param num.SL.folds number of folds to use in SuperLearner.
+#' @param separate.reg run separate outcome regressions for A=1 and A=0, stratified by observed A? Otherwise pools all data together and regresses Y against A,W.
+#' @param project if \code{TRUE} and family is \code{binomial()}, then projects the initial estimate of the blip function into its attainable range [-1,1].
+#' @param num.SL.rep final output is an average of num.SL.rep super-learner fits (repetition ensures minimal reliance on initial choice of folds)
+#' @param id optional cluster identification variable
+#' @param obsWeights observation weights
+#' @param stratifyCV stratify validation folds by event counts (does this for estimation of outcome regression, treatment mechanism, and conditional average treatment effect function). Useful for rare outcomes
+#' @param ipcw if TRUE, then does not estimate outcome regression (just sets it to zero for all covariate-treatment combinations)
+#' @param lib.ests Also return the candidate optimal rule estimates in the super-learner library
+#' @return a list containing
+#' \item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to).}
+#' \item{SL}{\code{SuperLearner} object used to generate this estimate.}
+#' @references A. R. Luedtke and M. J. van der Laan, ``Super-learning of an optimal dynamic treatment rule,'' \emph{International Journal of Biostatistics} (to appear), 2014.
+#' @examples
+#' SL.library = c('SL.mean','SL.glm')
+#' Qbar = function(a,w){plogis(a*w$W1)}
+#' n = 1000
+#' W = data.frame(W1=rnorm(n),W2=rnorm(n),W3=rnorm(n),W4=rnorm(n))
+#' A = rbinom(n,1,1/2)
+#' Y = rbinom(n,1,Qbar(A,W))
+#' 
+#' cate.est = sg.SL(W,A,Y,SL.library=SL.library,family=binomial())$est
+#' plot(W$W1,cate.est)
+#' @export
+
+
+sg.SL = function(W,A,Y,SL.library,g0=NULL,family=binomial(),num.SL.folds=10,separate.reg=TRUE,project=TRUE,num.SL.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,ipcw=FALSE,lib.ests=FALSE){
+	require(SuperLearner)
+	if((family$family=='binomial') & stratifyCV) {
+		blip.cvControl = list(V=num.SL.folds,validRows=CVFolds(length(Y),id,Y,SuperLearner.CV.control(stratifyCV=stratifyCV,V=num.SL.folds)))
+	} else {
+		if(sum(!(Y%in%c(0,1)))>0 & stratifyCV){
+			warning('Can only stratify on binary outcome. Will stratify on estimation of treatment mechanism only.')
+		}
+		blip.cvControl = list(V=num.SL.folds)
+	}
+	n = nrow(W)
+	if(ipcw){
+		Qbar.1W <- Qbar.0W <- rep(0,nrow(W))
+	} else {
+		if(separate.reg){
+			Qbar.1W = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(Y[A==1],W[A==1,],newX=W,family=family,SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=(family$family=='binomial') & stratifyCV),id=id[A==1],obsWeights=obsWeights[A==1])$SL.predict[,1]}))/num.SL.rep
+			Qbar.0W = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(Y[A==0],W[A==0,],newX=W,family=family,SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=(family$family=='binomial') & stratifyCV),id=id[A==0],obsWeights=obsWeights[A==0])$SL.predict[,1]}))/num.SL.rep
+
+		} else {
+			Qbar = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(Y,data.frame(W,A=A),newX=data.frame(rbind(W,W),A=rep(c(1,0),each=n)),family=family,SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=(family$family=='binomial') & stratifyCV),id=id,obsWeights=obsWeights)$SL.predict[,1]}))/num.SL.rep
+			Qbar.1W = head(Qbar,n)
+			Qbar.0W = tail(Qbar,n)
+		}
+	}
+	Qbar.AW = A*Qbar.1W + (1-A)*Qbar.0W
+	if(length(g0)==0){
+		g = SuperLearner(A,W,family=binomial(),SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=stratifyCV),id=id,obsWeights=obsWeights)$SL.predict[,1]
+	} else g=g0
+	g.AW = A*g + (1-A)*(1-g)
+	Z = (2*A-1)/g.AW * (Y-Qbar.AW) + Qbar.1W - Qbar.0W
+
+	SL.obj = SuperLearner(Z,W,SL.library=SL.library,cvControl=blip.cvControl,id=id,obsWeights=obsWeights)
+	blip = Reduce('+',lapply(1:num.SL.rep,function(i){SL.obj$SL.predict[,1]}))/num.SL.rep
+	if(project & family$family=='binomial') blip = pmin(pmax(blip,-1),1)
+
+	if(lib.ests){
+		est.mat = Reduce('+',lapply(1:num.SL.rep,function(i){SL.obj$library.predict}))/num.SL.rep
+		if(project & family$family=='binomial') est.mat = pmin(pmax(est.mat,-1),1)
+		return(list(est=blip,SL=SL.obj,Qbar.1W=Qbar.1W,Qbar.0W=Qbar.0W,Qbar.AW=Qbar.AW,Z=Z,est.mat=est.mat))
+	} else {
+		return(list(est=blip,SL=SL.obj,Qbar.1W=Qbar.1W,Qbar.0W=Qbar.0W,Qbar.AW=Qbar.AW,Z=Z))
+	}
+}
