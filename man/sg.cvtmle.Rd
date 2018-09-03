@@ -24,7 +24,7 @@ sg.cvtmle(W, A, Y, SL.library, txs = c(0, 1), baseline.probs = c(0.5,
 
 \item{baseline.probs}{A vector of length two indicating the (stochastic) treatment rule to use as a baseline when evaluating performance of the estimated optimal treatment rule. In this treatment rule, the first treatment in \code{txs} is assigned with probability \code{baseline.probs[1]} and the second is assigned with probability \code{baseline.probs[2]}. To obtain the marginal mean outcome under the optimal treatment strategy, i.e. not contrasting against any baseline, set \code{baseline.probs=c(0,0)}.}
 
-\item{kappa}{maximum allowable probability of a randomly drawn individual belonging to the optimal subgroup. The default of 1 indicates no constraint.}
+\item{kappa}{maximum allowable probability of treating a randomly drawn individual in the population with the second treatment in \code{txs}. The default of 1 indicates no constraint.}
 
 \item{g0}{if known (as in a randomized controlled trial), a matrix of probabilities of receiving the first tx in \code{txs} given covariates (first column) and the second treatment in \code{txs} given covariates (second column). Rows correspond to individuals with (\code{W},\code{A},\code{Y}) observed. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
 
