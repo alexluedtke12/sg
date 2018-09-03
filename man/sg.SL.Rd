@@ -4,10 +4,10 @@
 \alias{sg.SL}
 \title{SuperLearner for Estimating the Conditional Average Treatment Effect}
 \usage{
-sg.SL(W, A, Y, SL.library, g0 = NULL, family = binomial(),
-  num.SL.folds = 10, separate.reg = TRUE, project = TRUE,
+sg.SL(W, A, Y, SL.library, txs = c(0, 1), g0 = NULL,
+  family = binomial(), num.SL.folds = 10, project = TRUE,
   num.SL.rep = 5, id = NULL, obsWeights = NULL, stratifyCV = FALSE,
-  ipcw = FALSE, lib.ests = FALSE)
+  ipcw = FALSE, lib.ests = FALSE, ...)
 }
 \arguments{
 \item{W}{data frame with observations in the rows and baseline covariates used to form the subgroup in columns.}
@@ -18,13 +18,13 @@ sg.SL(W, A, Y, SL.library, g0 = NULL, family = binomial(),
 
 \item{SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate outcome regression, treatment mechanism (if unknown), and conditional average treatment effect function.}
 
+\item{txs}{A vector of length two indicating the two treatments of interest in A that will be used for the treatment assignment problem. Individuals with treatment \code{A} equal to a value not in \code{txs} will be treated as censored at treatment.}
+
 \item{g0}{if known (as in a randomized controlled trial), a vector of probabilities of treatment A=1 given covariates. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
 
 \item{family}{\code{binomial()} if outcome bounded in [0,1], or \code{gaussian()} otherwise. See \code{Details}.}
 
 \item{num.SL.folds}{number of folds to use in SuperLearner.}
-
-\item{separate.reg}{run separate outcome regressions for A=1 and A=0, stratified by observed A? Otherwise pools all data together and regresses Y against A,W.}
 
 \item{project}{if \code{TRUE} and family is \code{binomial()}, then projects the initial estimate of the blip function into its attainable range [-1,1].}
 
@@ -42,7 +42,7 @@ sg.SL(W, A, Y, SL.library, g0 = NULL, family = binomial(),
 }
 \value{
 a list containing
-\item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to).}
+\item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to). Conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the second treatment in \code{txs} versus receiving the first treatment in \code{txs}.}
 \item{SL}{\code{SuperLearner} object used to generate this estimate.}
 }
 \description{
@@ -61,6 +61,10 @@ Y = rbinom(n,1,Qbar(A,W))
 
 cate.est = sg.SL(W,A,Y,SL.library=SL.library,family=binomial())$est
 plot(W$W1,cate.est)
+
+# compare to the truth
+cate.truth = Qbar(1,W) - Qbar(0,W)
+plot(cate.est,cate.truth)
 }
 \references{
 A. R. Luedtke and M. J. van der Laan, ``Super-learning of an optimal dynamic treatment rule,'' \emph{International Journal of Biostatistics} (to appear), 2014.

@@ -1,10 +1,12 @@
 Package: sg
-Title: What the Package Does (one line, title case)
-Version: 0.21
-Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-Depends: R (>= 3.3.2)
-License: What license is it under?
+Title: Targeted Learning for Subgroup Analyses
+Version: 0.30
+Authors@R: person("Alex", "Luedtke", email = "aluedtke@uw.edu", role = c("aut", "cre"))
+Description: Targeted Learning for conducting subgroup analyses and estimating the impact of implementing the optimal individualized treatment strategy int he population.
+Depends: R (>= 3.5.0)
+Imports:
+	SuperLearner (>= 2.0)
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.0

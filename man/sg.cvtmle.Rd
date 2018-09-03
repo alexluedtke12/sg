@@ -4,30 +4,33 @@
 \alias{sg.cvtmle}
 \title{CV-TMLE Estimating Impact of Treating Optimal Subgroup}
 \usage{
-sg.cvtmle(W, A, Y, SL.library, bothactive = FALSE, kappa = 1, g0 = NULL,
-  family = binomial(), sig.trunc = 1e-10, alpha = 0.05, num.folds = 10,
-  num.SL.rep = 5, num.est.rep = 5, id = NULL, obsWeights = NULL,
+sg.cvtmle(W, A, Y, SL.library, txs = c(0, 1), baseline.probs = c(0.5,
+  0.5), kappa = 1, g0 = NULL, family = binomial(),
+  sig.trunc = 1e-10, alpha = 0.05, num.folds = 10, num.SL.rep = 5,
+  num.est.rep = 5, id = NULL, obsWeights = NULL,
   stratifyCV = FALSE, RR = FALSE, ipcw = FALSE, lib.ests = FALSE,
-  verbose = TRUE)
+  init.ests.out = FALSE, init.ests.in = NULL, verbose = TRUE, ...)
 }
 \arguments{
 \item{W}{data frame with observations in the rows and baseline covariates used to form the subgroup in columns.}
 
-\item{A}{binary treatment vector, where 1 indicates that an individual was treated.}
+\item{A}{a vector of treatments. This vector may have more than two levels, but the two levels of interest in the treatment assignment problem must be specified in \code{txs}.}
 
 \item{Y}{real-valued outcome for which large values are preferred (if use relative risk contrast, then Y should be an indicator of the absence of an adverse event, and the relative risk returned is the relative risk of the adverse event).}
 
 \item{SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate outcome regression, treatment mechanism (if unknown), and conditional average treatment effect function.}
 
-\item{bothactive}{If TRUE, then returns the impact of treating the optimal subgroup versus randomizing the treatment via a fair coin toss. Otherwise, returns an estimate of the impact of treating the optimal subgroup versus treating no one.}
+\item{txs}{A vector of length two indicating the two treatments of interest in A that will be used for the treatment assignment problem. Individuals with treatment \code{A} equal to a value not in \code{txs} will be treated as censored at treatment.}
 
-\item{kappa}{maximum allowable probability of a randomly drawn individual belonging to the optimal subgroup. The default of 1 indicates no constraint. Only relevant if bothactive is FALSE}
+\item{baseline.probs}{A vector of length two indicating the (stochastic) treatment rule to use as a baseline when evaluating performance of the estimated optimal treatment rule. In this treatment rule, the first treatment in \code{txs} is assigned with probability \code{baseline.probs[1]} and the second is assigned with probability \code{baseline.probs[2]}. To obtain the marginal mean outcome under the optimal treatment strategy, i.e. not contrasting against any baseline, set \code{baseline.probs=c(0,0)}.}
 
-\item{g0}{if known (as in a randomized controlled trial), a vector of probabilities of treatment A=1 given covariates. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
+\item{kappa}{maximum allowable probability of a randomly drawn individual belonging to the optimal subgroup. The default of 1 indicates no constraint.}
+
+\item{g0}{if known (as in a randomized controlled trial), a matrix of probabilities of receiving the first tx in \code{txs} given covariates (first column) and the second treatment in \code{txs} given covariates (second column). Rows correspond to individuals with (\code{W},\code{A},\code{Y}) observed. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
 
 \item{family}{\code{binomial()} if outcome bounded in [0,1], or \code{gaussian()} otherwise.}
 
-\item{sig.trunc}{value at which the standard deviation estimate is truncated (only used if bothactive is TRUE)}
+\item{sig.trunc}{value at which the standard deviation estimate is truncated.}
 
 \item{alpha}{confidence level for returned confidence interval set to (1-alpha)*100\%.}
 
@@ -49,39 +52,58 @@ sg.cvtmle(W, A, Y, SL.library, bothactive = FALSE, kappa = 1, g0 = NULL,
 
 \item{lib.ests}{Also return estimates based on candidate optimal rule estimates in the super-learner library}
 
+\item{init.ests.out}{Set this option to TRUE to return the initial SuperLearner estimates. Can be fed to a new call of this function using init.ests.in to speed up that call. E.g., useful if want to call this function at many values of \code{kappa.}}
+
+\item{init.ests.in}{Can be used to feed the function the initial SuperLearner estimates from a previous call of this function (see \code{init.ests.out}). Dramatically reduces runtime. See Example below.}
+
 \item{verbose}{give status updates}
 }
 \value{
 a list containing
 \item{est}{Vector containing estimates of the impact of treating the optimal subgroup. Items in the vector correspond to different choices of algorithms for estimating the optimal treatment rule (if \code{lib.ests} is FALSE, only returns SuperLearner estimate).}
 \item{ci}{Matrix containing confidence intervals for the impact of treating the optimal subgroup. Left column contains lower bounds, right column contains upper bounds. Rows correspond to different choices of algorithms for estimating the optimal treatment rule (if \code{lib.ests} is FALSE, only returns SuperLearner estimate).}
+\item{est.mat}{Estimates across repetitions.}
 }
 \description{
 This function estimates the impact of treating the optimal subgroup versus giving the opposite treatment using a CV-TMLE.
 }
 \details{
-Cross-validated targeted minimum loss-based estimator (CV-TMLE) for the impact of treating the optimal subgroup versus either treating no one or randomizing the treatment via a fair coin toss
+Cross-validated targeted minimum loss-based estimator (CV-TMLE) for the impact of treating the optimal subgroup versus either a baseline treatment strategy
 
-When \code{bothactive} is FALSE, \code{sig.trunc} is useful if the treatment effect is negative (or small) in all strata of covariates, since in these cases we expect that the variance estimate will converge to zero and coverage of the non-truncated confidence interval may suffer. The truncation ensures that the standard deviation estimate is never too small so that coverage of the lower bound is at worst conservative. Coverage of the upper bound also relies on being able to estimate the optimal subgroup well in terms of mean outcome (see the cited papers).
+\code{sig.trunc} is useful if the treatment effect is negative (or small) in all strata of covariates and \code{baseline.probs}=c(1,0), since in these cases we expect that the variance estimate will converge to zero and coverage of the non-truncated confidence interval may suffer. The truncation ensures that the standard deviation estimate is never too small so that coverage of the lower bound is at worst conservative. Coverage of the upper bound also relies on being able to estimate the optimal subgroup well in terms of mean outcome (see the cited papers).
 
 We do not have any theoretical justication for the CV-TMLE confidence interval when the treatment effect falls on the decision boundary with positive probability (decision boundary is zero), though we have seen that it performs well in simulations.
 }
 \examples{
 SL.library = c('SL.mean','SL.glm')
-Qbar = function(a,w){plogis(a*(w$W1>0))}
+Qbar = function(a,w){plogis(a*w$W1)}
 n = 500
 W = data.frame(W1=rnorm(n),W2=rnorm(n),W3=rnorm(n),W4=rnorm(n))
 A = rbinom(n,1,1/2)
 Y = rbinom(n,1,Qbar(A,W))
 
-sg.cvtmle(W,A,Y,bothactive=TRUE,SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial())
-sg.cvtmle(W,A,Y,bothactive=TRUE,SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),stratifyCV=TRUE)
-sg.cvtmle(W,A,Y,bothactive=TRUE,SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),id=rep(1:(n/2),2),obsWeights=1+3*runif(n))
+# comparing the mean outcome under the optimal rule to the mean outcome
+# when treating half of the population at random
+sg.cvtmle(W,A,Y,baseline.probs=c(0.5,0.5),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial())
+# same as above, but adding ids (used in CV splits) and in observation weights
+sg.cvtmle(W,A,Y,baseline.probs=c(0.5,0.5),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),id=rep(1:(n/2),2),obsWeights=1+3*runif(n))
 
-sg.cvtmle(W,A,Y,bothactive=FALSE,SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),sig.trunc=0.001)
-sg.cvtmle(W,A,Y,bothactive=FALSE,SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=0.25,family=binomial())
-sg.cvtmle(W,A,Y,bothactive=FALSE,SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),stratifyCV=TRUE)
-sg.cvtmle(W,A,Y,bothactive=FALSE,SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),id=rep(1:(n/2),2),obsWeights=rbinom(n,1,2/3)*runif(n))
+# comparing the mean outcome under the optimal rule against the mean outcome under treating no one
+sg.cvtmle(W,A,Y,baseline.probs=c(1,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),sig.trunc=0.001)
+# comparing the mean outcome under an optimal rule that treats at most 25 percent of people
+# to the mean outcome under treating 25 percent of people at random
+sg.cvtmle(W,A,Y,baseline.probs=c(0.75,0.25),SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=0.25,family=binomial())
+# same as above, but adding ids (used in CV splits) and in observation weights
+sg.cvtmle(W,A,Y,baseline.probs=c(1,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),id=rep(1:(n/2),2),obsWeights=rbinom(n,1,2/3)*runif(n))
+
+# comparing the mean outcomes under optimal rules that treats at most prop percent of people
+out_10 = sg.cvtmle(W,A,Y,baseline.probs=c(0,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=0.10,family=binomial(),init.ests.out=TRUE)
+init.ests = out_10$init.ests
+for(prop in seq(0.10,0.25,by=0.05)){
+  print(paste0("Can treat ",prop," proportion of population."))
+  out = sg.cvtmle(W,A,Y,baseline.probs=c(0,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=prop,family=binomial(),init.ests.out=FALSE,init.ests.in=init.ests,verbose=FALSE)
+	 print(out$est)
+}
 }
 \references{
 ``Evaluating the Impact of Treating the Optimal Subgroup,'' technical report to be released soon.
