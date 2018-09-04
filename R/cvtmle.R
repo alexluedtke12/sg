@@ -101,9 +101,10 @@
 			if(length(unique(A))>2){
 				g0 = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(as.numeric(A.trn==0),W.trn,newX=rbind(W.val,W.trn),family=binomial(),SL.library=SL.library,obsWeights=obsWeights.trn,id=id.trn,cvControl=SuperLearner.CV.control(stratifyCV=stratifyCV,V=num.folds))$SL.predict[,1]}))/num.SL.rep
 				if(sum(g0+g1>1)>0){
+					inds = which(g0+g1>1)
 					sm = g0 + g1
-					g0 = g0/sm
-					g1 = g1/sm
+					g0[inds] = g0[inds]/sm[inds]
+					g1[inds] = g1[inds]/sm[inds]
 				}
 			} else {
 				g0 = 1-g1

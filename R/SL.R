@@ -75,9 +75,10 @@ sg.SL = function(W,A,Y,SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.fo
 		if(length(unique(A))>2){
 			g0 = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(as.numeric(A==0),W,family=binomial(),SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=stratifyCV),id=id,obsWeights=obsWeights)$SL.predict[,1]}))/num.SL.rep
 			if(sum(g0+g1>1)>0){
+				inds = which(g0+g1>1)
 				sm = g0 + g1
-				g0 = g0/sm
-				g1 = g1/sm
+				g0[inds] = g0[inds]/sm[inds]
+				g1[inds] = g1[inds]/sm[inds]
 			}
 		} else {
 			g0 = 1-g1
