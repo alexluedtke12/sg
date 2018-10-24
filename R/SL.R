@@ -10,7 +10,7 @@
 #' @param A binary treatment vector, where 1 indicates that an individual was treated.
 #' @param Y real-valued outcome.
 #' @param SL.library SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate outcome regression, treatment mechanism (if unknown), and conditional average treatment effect function.
-#' @param txs A vector of length two indicating the two treatments of interest in A that will be used for the treatment assignment problem. Individuals with treatment \code{A} equal to a value not in \code{txs} will be treated as censored at treatment.
+#' @param txs A vector of length one or two indicating the two treatments of interest in A that will be used for the treatment assignment problem. Individuals with treatment \code{A} equal to a value not in \code{txs} will be treated as censored at treatment.
 #' @param g0 if known (as in a randomized controlled trial), a vector of probabilities of treatment A=1 given covariates. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.
 #' @param family \code{binomial()} if outcome bounded in [0,1], or \code{gaussian()} otherwise. See \code{Details}.
 #' @param num.SL.folds number of folds to use in SuperLearner.
@@ -22,7 +22,7 @@
 #' @param ipcw if TRUE, then does not estimate outcome regression (just sets it to zero for all covariate-treatment combinations)
 #' @param lib.ests Also return the candidate optimal rule estimates in the super-learner library
 #' @return a list containing
-#' \item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to). Conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the second treatment in \code{txs} versus receiving the first treatment in \code{txs}.}
+#' \item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to). If \code{txs} is of length two, then conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the second treatment in \code{txs} versus receiving the first treatment in \code{txs}. If \code{txs} is of length one, then conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the treatment in \code{txs} versus the expected outcome for a treatment randomly drawn according to the observed distribution (conditional on covariates).}
 #' \item{SL}{\code{SuperLearner} object used to generate this estimate.}
 #' @references A. R. Luedtke and M. J. van der Laan, ``Super-learning of an optimal dynamic treatment rule,'' \emph{International Journal of Biostatistics} (to appear), 2014.
 #' @examples
@@ -47,10 +47,16 @@ sg.SL = function(W,A,Y,SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.fo
 
 	if(any(names(list(...))=="separate.reg")) warning("The separate.reg option is deprecated. All outcome regressions are now stratified based on treatment status, i.e. the deprecated separate.reg always equals TRUE.")
 
-	# Recode A so that first value in txs is coded as zero, second is coded as 1
+	# Recode A
 	A.new = rep(NA,length(A))
-	A.new[A==txs[1]] = 0
-	A.new[A==txs[2]] = 1
+	if(length(txs)==2){
+		# Recode A so that first value in txs is coded as 0, second is coded as 1
+		A.new[A==txs[1]] = 0
+		A.new[A==txs[2]] = 1
+	} else if(length(txs)==1){
+		# Recode A so that the value in txs is coded as 1
+		A.new[A==txs[1]] = 1
+	} else stop("txs must be of length 1 or 2")
 	A.new[!(A%in%txs)] = 1e10
 	A = A.new
 
@@ -67,9 +73,11 @@ sg.SL = function(W,A,Y,SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.fo
 		Qbar.1W <- Qbar.0W <- rep(0,nrow(W))
 	} else {
 		Qbar.1W = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(Y[A==1],W[A==1,],newX=W,family=family,SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=(family$family=='binomial') & stratifyCV),id=id[A==1],obsWeights=obsWeights[A==1])$SL.predict[,1]}))/num.SL.rep
-		Qbar.0W = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(Y[A==0],W[A==0,],newX=W,family=family,SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=(family$family=='binomial') & stratifyCV),id=id[A==0],obsWeights=obsWeights[A==0])$SL.predict[,1]}))/num.SL.rep
+		if(length(txs)==2){
+			Qbar.0W = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(Y[A==0],W[A==0,],newX=W,family=family,SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=(family$family=='binomial') & stratifyCV),id=id[A==0],obsWeights=obsWeights[A==0])$SL.predict[,1]}))/num.SL.rep
+		}
 	}
-	Qbar.AW = (A==1)*Qbar.1W + (A==0)*Qbar.0W
+	if(length(txs)==2) Qbar.AW = (A==1)*Qbar.1W + (A==0)*Qbar.0W
 	if(length(g0)==0){
 		g1 = Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(as.numeric(A==1),W,family=binomial(),SL.library=SL.library,cvControl=list(V=num.SL.folds,stratifyCV=stratifyCV),id=id,obsWeights=obsWeights)$SL.predict[,1]}))/num.SL.rep
 		if(length(unique(A))>2){
@@ -85,7 +93,12 @@ sg.SL = function(W,A,Y,SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.fo
 		}
 		g = cbind(g0,g1)
 	} else g=g0
-	Z = ((A==1)-(A==0))/((A==1)*g[,2] + (A==0)*g[,2] + (A!=0 & A!=1)) * (Y-Qbar.AW) + Qbar.1W - Qbar.0W
+	if(length(txs)==2){
+		Z = ((A==1)-(A==0))/((A==1)*g[,2] + (A==0)*g[,2] + (A!=0 & A!=1)) * (Y-Qbar.AW) + Qbar.1W - Qbar.0W
+	} else {
+		Z = (A==1)/((A==1)*g[,2] + (A!=1)) * (Y-Qbar.1W) + Qbar.1W - Y
+	}
+	
 
 	SL.obj = SuperLearner(Z,W,SL.library=SL.library,cvControl=blip.cvControl,id=id,obsWeights=obsWeights,method="method.NNLS2")
 	blip = Reduce('+',lapply(1:num.SL.rep,function(i){SL.obj$SL.predict[,1]}))/num.SL.rep
@@ -94,8 +107,16 @@ sg.SL = function(W,A,Y,SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.fo
 	if(lib.ests){
 		est.mat = Reduce('+',lapply(1:num.SL.rep,function(i){SL.obj$library.predict}))/num.SL.rep
 		if(project & family$family=='binomial') est.mat = pmin(pmax(est.mat,-1),1)
-		return(list(est=blip,SL=SL.obj,Qbar.1W=Qbar.1W,Qbar.0W=Qbar.0W,Qbar.AW=Qbar.AW,Z=Z,est.mat=est.mat))
+		if(length(txs)==2) {
+			return(list(est=blip,SL=SL.obj,Qbar.1W=Qbar.1W,Qbar.0W=Qbar.0W,Qbar.AW=Qbar.AW,Z=Z,est.mat=est.mat))
+		} else {
+			return(list(est=blip,SL=SL.obj,Qbar.1W=Qbar.1W,Z=Z,est.mat=est.mat))
+		}
 	} else {
-		return(list(est=blip,SL=SL.obj,Qbar.1W=Qbar.1W,Qbar.0W=Qbar.0W,Qbar.AW=Qbar.AW,Z=Z))
+		if(length(txs)==2) {
+			return(list(est=blip,SL=SL.obj,Qbar.1W=Qbar.1W,Qbar.0W=Qbar.0W,Qbar.AW=Qbar.AW,Z=Z))
+		} else {
+			return(list(est=blip,SL=SL.obj,Qbar.1W=Qbar.1W,Z=Z))
+		}
 	}
 }
