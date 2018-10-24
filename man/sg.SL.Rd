@@ -18,7 +18,7 @@ sg.SL(W, A, Y, SL.library, txs = c(0, 1), g0 = NULL,
 
 \item{SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate outcome regression, treatment mechanism (if unknown), and conditional average treatment effect function.}
 
-\item{txs}{A vector of length two indicating the two treatments of interest in A that will be used for the treatment assignment problem. Individuals with treatment \code{A} equal to a value not in \code{txs} will be treated as censored at treatment.}
+\item{txs}{A vector of length one or two indicating the two treatments of interest in A that will be used for the treatment assignment problem. Individuals with treatment \code{A} equal to a value not in \code{txs} will be treated as censored at treatment.}
 
 \item{g0}{if known (as in a randomized controlled trial), a vector of probabilities of treatment A=1 given covariates. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
 
@@ -42,7 +42,7 @@ sg.SL(W, A, Y, SL.library, txs = c(0, 1), g0 = NULL,
 }
 \value{
 a list containing
-\item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to). Conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the second treatment in \code{txs} versus receiving the first treatment in \code{txs}.}
+\item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to). If \code{txs} is of length two, then conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the second treatment in \code{txs} versus receiving the first treatment in \code{txs}. If \code{txs} is of length one, then conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the treatment in \code{txs} versus the expected outcome for a treatment randomly drawn according to the observed distribution (conditional on covariates).}
 \item{SL}{\code{SuperLearner} object used to generate this estimate.}
 }
 \description{
