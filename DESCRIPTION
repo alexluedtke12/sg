@@ -1,6 +1,6 @@
 Package: sg
 Title: Targeted Learning for Subgroup Analyses
-Version: 0.31
+Version: 0.32
 Authors@R: person("Alex", "Luedtke", email = "aluedtke@uw.edu", role = c("aut", "cre"))
 Description: Targeted Learning for conducting subgroup analyses and estimating the impact of implementing the optimal individualized treatment strategy in the population.
 Depends: R (>= 3.5.0)
