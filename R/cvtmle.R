@@ -61,10 +61,10 @@
 	folds = CVFolds(n,id,Y,SuperLearner.CV.control(stratifyCV=stratifyCV,V=num.folds))
 	ests = do.call(rbind,lapply(folds,function(val.inds){
 
-		W.trn = W[-val.inds,]
+		W.trn = W[-val.inds,,drop=FALSE]
 		A.trn = A[-val.inds]
 		Y.trn = Y[-val.inds]
-		W.val = W[val.inds,]
+		W.val = W[val.inds,,drop=FALSE]
 		A.val = A[val.inds]
 		Y.val = Y[val.inds]
 
