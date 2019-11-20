@@ -54,7 +54,7 @@
 # Helper function used by sg.cvtmle
 # Inputs the same as for those functions
 
-.sgcvtmle.preprocess = function(W,A,Y,SL.library,g0=NULL,family=binomial(),num.folds=10,num.SL.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,ipcw=FALSE){
+.sgcvtmle.preprocess = function(W,A,Y,SL.library,g0=NULL,family=binomial(),num.folds=10,num.SL.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,ipcw=FALSE,SL.method="method.NNLS2"){
 	require(SuperLearner)
 	n = nrow(W)
 	if(!is.null(id) & stratifyCV==TRUE) stop('Stratified sampling with id not currently implemented.')
@@ -237,7 +237,7 @@ sg.cvtmle = function(W,A,Y,SL.library,txs=c(0,1),baseline.probs=c(0.5,0.5),kappa
 		if(length(init.ests.in)>0){
 			init.ests = init.ests.in[[i]]
 		} else {
-			init.ests = .sgcvtmle.preprocess(W,A,Y,SL.library,g0=g0,family=family,num.folds=num.folds,num.SL.rep=num.SL.rep,id=id,obsWeights=obsWeights,stratifyCV=stratifyCV,ipcw=ipcw)
+			init.ests = .sgcvtmle.preprocess(W,A,Y,SL.library,g0=g0,family=family,num.folds=num.folds,num.SL.rep=num.SL.rep,id=id,obsWeights=obsWeights,stratifyCV=stratifyCV,ipcw=ipcw,SL.method=SL.method)
 		}
 		Q.est = init.ests$Q.est
 		blip.est = init.ests$blip.est
