@@ -119,7 +119,7 @@
 
 		Z.trn = ((A.trn==1)-(A.trn==0))/((A.trn==1)*g.trn[,2] + (A.trn==0)*g.trn[,1] + (A.trn!=0 & A.trn!=1)) * (Y.trn-(A.trn==0)*Qbar[(nrow(W.val)+1):nrow(W),1]-(A.trn==1)*Qbar[(nrow(W.val)+1):nrow(W),2]) + Qbar[(nrow(W.val)+1):nrow(W),2]-Qbar[(nrow(W.val)+1):nrow(W),1]
 		tmp = Reduce('+',lapply(1:num.SL.rep,function(i){
-			SL = SuperLearner(Z.trn,W.trn,newX=W.val,SL.library=SL.library,obsWeights=obsWeights.trn,id=id.trn,cvControl=SuperLearner.CV.control(validRows=CVFolds(length(Y.trn),id.trn,Y.trn,SuperLearner.CV.control(stratifyCV=stratifyCV,V=num.folds)),V=num.folds),method="method.NNLS2")
+			SL = SuperLearner(Z.trn,W.trn,newX=W.val,SL.library=SL.library,obsWeights=obsWeights.trn,id=id.trn,cvControl=SuperLearner.CV.control(validRows=CVFolds(length(Y.trn),id.trn,Y.trn,SuperLearner.CV.control(stratifyCV=stratifyCV,V=num.folds)),V=num.folds),method=SL.method)
 			cbind(SL$SL.predict[,1],SL$library.predict)}))/num.SL.rep
 		blip.est = tmp[,1]
 		lib.blip.est = tmp[,-1]
@@ -156,6 +156,7 @@
 #' @param alpha confidence level for returned confidence interval set to (1-alpha)*100\%.
 #' @param num.folds number of folds to use in cross-validation step of the CV-TMLE.
 #' @param num.SL.rep number of super-learner repetitions (increasing this number should make the algorithm more stable across seeds).
+#' @param SL.method method that the SuperLearner function uses to select a convex combination of learners
 #' @param num.est.rep number of repetitions of estimator, minimizing variation over cross-validation fold assignment (increasing this number should make the algorithm more stable across seeds)
 #' @param id optional cluster identification variable. Will ensure rows with same id remain in same validation fold each time cross-validation used
 #' @param obsWeights observation weights
@@ -206,7 +207,7 @@
 #' }
 #' @export
 
-sg.cvtmle = function(W,A,Y,SL.library,txs=c(0,1),baseline.probs=c(0.5,0.5),kappa=1,g0=NULL,family=binomial(),sig.trunc=1e-10,alpha=0.05,num.folds=10,num.SL.rep=5,num.est.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,RR=FALSE,ipcw=FALSE,lib.ests=FALSE,init.ests.out=FALSE,init.ests.in=NULL,verbose=TRUE,...){
+sg.cvtmle = function(W,A,Y,SL.library,txs=c(0,1),baseline.probs=c(0.5,0.5),kappa=1,g0=NULL,family=binomial(),sig.trunc=1e-10,alpha=0.05,num.folds=10,num.SL.rep=5,SL.method="method.NNLS2",num.est.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,RR=FALSE,ipcw=FALSE,lib.ests=FALSE,init.ests.out=FALSE,init.ests.in=NULL,verbose=TRUE,...){
 	require(SuperLearner)
 
 	if(any(names(list(...))=="bothactive")) {

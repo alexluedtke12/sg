@@ -16,6 +16,7 @@
 #' @param num.SL.folds number of folds to use in SuperLearner.
 #' @param project if \code{TRUE} and family is \code{binomial()}, then projects the initial estimate of the blip function into its attainable range [-1,1].
 #' @param num.SL.rep final output is an average of num.SL.rep super-learner fits (repetition ensures minimal reliance on initial choice of folds)
+#' @param SL.method method that the SuperLearner function uses to select a convex combination of learners
 #' @param id optional cluster identification variable
 #' @param obsWeights observation weights
 #' @param stratifyCV stratify validation folds by event counts (does this for estimation of outcome regression, treatment mechanism, and conditional average treatment effect function). Useful for rare outcomes
@@ -42,7 +43,7 @@
 #' @export
 
 
-sg.SL = function(W,A,Y,SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.folds=10,project=TRUE,num.SL.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,ipcw=FALSE,lib.ests=FALSE,...){
+sg.SL = function(W,A,Y,SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.folds=10,project=TRUE,num.SL.rep=5,SL.method="method.NNLS2",id=NULL,obsWeights=NULL,stratifyCV=FALSE,ipcw=FALSE,lib.ests=FALSE,...){
 	require(SuperLearner)
 
 	if(any(names(list(...))=="separate.reg")) warning("The separate.reg option is deprecated. All outcome regressions are now stratified based on treatment status, i.e. the deprecated separate.reg always equals TRUE.")
@@ -100,7 +101,7 @@ sg.SL = function(W,A,Y,SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.fo
 	}
 	
 
-	SL.obj = SuperLearner(Z,W,SL.library=SL.library,cvControl=blip.cvControl,id=id,obsWeights=obsWeights,method="method.NNLS2")
+	SL.obj = SuperLearner(Z,W,SL.library=SL.library,cvControl=blip.cvControl,id=id,obsWeights=obsWeights,method=SL.method)
 	blip = Reduce('+',lapply(1:num.SL.rep,function(i){SL.obj$SL.predict[,1]}))/num.SL.rep
 	if(project & family$family=='binomial') blip = pmin(pmax(blip,-1),1)
 
