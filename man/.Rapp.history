@@ -1,0 +1,81 @@
+0.6/60
+0.6/10
+1.2/10
+rm(list=ls(all=T))
+# processes data in adata and returns a table of 1000 validation indices (in rows)#
+#
+set.seed(1)#
+#
+#####################################################################################
+# THIS SECTION NEEDS TO CHANGE FOR EACH DATA SET#
+#
+wd = "/Volumes/trials/vaccine/p070/analysis/adhoc/ALuedtke_2018"#
+ds_name = "cd4"#
+response_var = "any_response"#
+#
+#####################################################################################
+#
+dir.create(paste0(wd,"/processed_",ds_name,"_data"))#
+#
+#####################################################################################
+# THIS SECTION NEEDS TO CHANGE FOR EACH DATA SET#
+#
+library(data.table)#
+x = fread(file.path(wd,"adata","icsresp070.csv"))#
+#
+x[,sexbin:=as.numeric(x$sex=="F")]#
+x = x[tcellsub=="cd3+/cd4+" & (rx_code=="T1" | rx_code=="T2" | rx_code=="T3"),]#
+#
+processed_data = dcast(x[visitno==9,],ptid + rx_code + bmi + sexbin ~ gene,value.var="response")#
+processed_data[,any_response:=pmax(ENV,GAG,POL,na.rm=TRUE)]#
+#
+processed_data = processed_data[,c("sexbin","bmi","any_response")]#
+#
+write.csv(processed_data,file=file.path(wd,"processed_cd4_data","processed_data.csv"),quote=FALSE,row.names=FALSE)#
+#
+processed_data = as.data.frame(processed_data)#
+#
+#####################################################################################
+# THIS SECTION USES CODE FROM PRIVATE REPOSITORY https://github.com/osofr/funcGrad.jl/tree/master/examples/ex2#
+# This code will be public at the time of publication, and can also be made available earlier upon request#
+#
+source("/Users/alex/Dropbox/git/funcGrad.jl/examples/ex2/data_analysis_funs.R")#
+#####################################################################################
+#
+make_val_inds(wd,ds_name,response_var,num_vals=2e4)#
+#
+#####################################################################################
+# THIS SECTION IS ONLY USED FOR THE CD4 EXAMPLE#
+#
+system(paste0("scp -r ",wd,"/processed_cd4_data rhino:~/funcGrad.jl/examples/ex2/"))
+# calculate aucs for all methods#
+#
+set.seed(2)#
+#
+library(AUC)#
+library(cvAUC)#
+#
+#####################################################################################
+# THIS SECTION NEEDS TO CHANGE FOR EACH DATA SET#
+#
+wd = "/Volumes/trials/vaccine/p070/analysis/adhoc/ALuedtke_2018"#
+ds_name = "cd4"#
+response_var = "any_response"#
+methods = c(#
+	"cd4_linear_logistic_2d_n50_pm05_borders"="cd4_linear_logistic_2d_n50_pm05_borders",#
+	"cd4_linear_logistic_2d_n50_pm1_borders"="cd4_linear_logistic_2d_n50_pm1_borders",#
+	"cd4_linear_logistic_2d_n50_pm2_borders"="cd4_linear_logistic_2d_n50_pm2_borders")#
+finite_pop = FALSE#
+#####################################################################################
+# THIS SECTION USES CODE FROM PRIVATE REPOSITORY https://github.com/osofr/funcGrad.jl/tree/master/examples/ex2#
+# This code will be public at the time of publication, and can also be made available earlier upon request#
+#
+source("/Users/alex/Dropbox/git/funcGrad.jl/examples/ex2/data_analysis_funs.R")#
+#
+#####################################################################################
+#
+out = eval_performance(wd,ds_name,response_var,methods,finite_pop=finite_pop)#
+#
+out$auc[order(out$auc[,"auc"],decreasing=TRUE),]#
+#
+out$crossent[order(out$crossent[,"crossent"]),]

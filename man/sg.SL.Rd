@@ -4,31 +4,40 @@
 \alias{sg.SL}
 \title{SuperLearner for Estimating the Conditional Average Treatment Effect}
 \usage{
-sg.SL(W, A, Y, SL.library, txs = c(0, 1), g0 = NULL,
-  family = binomial(), num.SL.folds = 10, project = TRUE,
-  num.SL.rep = 5, id = NULL, obsWeights = NULL, stratifyCV = FALSE,
-  ipcw = FALSE, lib.ests = FALSE, ...)
+sg.SL(W, A, Y, SL.library, Delta = rep(1,length(A)), OR.SL.library = SL.library,
+  prop.SL.library = SL.library, missingness.SL.library = SL.library, txs = c(0, 1), g0 = NULL,
+  family = binomial(), num.SL.folds = 10, num.SL.rep = 5,
+  SL.method = "method.NNLS2", id = NULL, obsWeights = NULL,
+  stratifyCV = FALSE, lib.ests = FALSE, ...)
 }
 \arguments{
 \item{W}{data frame with observations in the rows and baseline covariates used to form the subgroup in columns.}
 
-\item{A}{binary treatment vector, where 1 indicates that an individual was treated.}
+\item{A}{numeric treatment vector. Treatments of interest specified using the \code{txs} argument.}
 
 \item{Y}{real-valued outcome.}
 
-\item{SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate outcome regression, treatment mechanism (if unknown), and conditional average treatment effect function.}
+\item{SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate the conditional average treatment effect functions.}
 
-\item{txs}{A vector of length one or two indicating the two treatments of interest in A that will be used for the treatment assignment problem. Individuals with treatment \code{A} equal to a value not in \code{txs} will be treated as censored at treatment.}
+\item{Delta}{Vector of the same length as \code{Y}. An entry should equal 1 if the corresponding entry in \code{Y} is observed, and should equal 0 if the corresponding entry in \code{Y} is to be treated as missing.}
 
-\item{g0}{if known (as in a randomized controlled trial), a vector of probabilities of treatment A=1 given covariates. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
+\item{OR.SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate the outcome regressions.}
+
+\item{prop.SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate the propensity scores.}
+
+\item{missingness.SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate the probability of having a missing outcome given treatment and covariates.}
+
+\item{txs}{A vector indicating the two or more treatments of interest in A that will be used for the treatment assignment problem. The treatments in \code{A} may be a superset of those in in txs.}
+
+\item{g0}{if known (as in a randomized controlled trial), a matrix of probabilities of receiving the treatment corresponding to entry \code{k} in \code{txs} given covariates in the \code{k}th column. Rows correspond to individuals with (\code{W},\code{A},\code{Y}) observed. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
 
 \item{family}{\code{binomial()} if outcome bounded in [0,1], or \code{gaussian()} otherwise. See \code{Details}.}
 
 \item{num.SL.folds}{number of folds to use in SuperLearner.}
 
-\item{project}{if \code{TRUE} and family is \code{binomial()}, then projects the initial estimate of the blip function into its attainable range [-1,1].}
-
 \item{num.SL.rep}{final output is an average of num.SL.rep super-learner fits (repetition ensures minimal reliance on initial choice of folds)}
+
+\item{SL.method}{method that the SuperLearner function uses to select a convex combination of learners}
 
 \item{id}{optional cluster identification variable}
 
@@ -36,20 +45,22 @@ sg.SL(W, A, Y, SL.library, txs = c(0, 1), g0 = NULL,
 
 \item{stratifyCV}{stratify validation folds by event counts (does this for estimation of outcome regression, treatment mechanism, and conditional average treatment effect function). Useful for rare outcomes}
 
-\item{ipcw}{if TRUE, then does not estimate outcome regression (just sets it to zero for all covariate-treatment combinations)}
-
 \item{lib.ests}{Also return the candidate optimal rule estimates in the super-learner library}
 }
 \value{
 a list containing
-\item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to). If \code{txs} is of length two, then conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the second treatment in \code{txs} versus receiving the first treatment in \code{txs}. If \code{txs} is of length one, then conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the treatment in \code{txs} versus the expected outcome for a treatment randomly drawn according to the observed distribution (conditional on covariates).}
-\item{SL}{\code{SuperLearner} object used to generate this estimate.}
+\item{est}{Vector containing an estimate of the conditional average treatment effect function for each individual in the data set (conditional on the covariate strata they belong to). Here the conditional average treatment effect is defined as the difference in conditional mean outcome if receiving the treatment in \code{txs} versus the expected outcome for a treatment randomly drawn according to the observed distribution (conditional on covariates).}
+\item{SL.cate.fun}{A function that takes as input covariates (as a matrix) and returns a matrix of conditional average treatment effects (estimated by SuperLearner) with rows corresponding to the different covariate values in the rows of W and columns corresponding to the different treatments.}
+\item{SL}{a list of lists of \code{SuperLearner} objects used to generate these estimates. Each entry in the outer list corresponds to a treatment in txs. Each entry in the inner list corresponds to one of the num.SL.rep repetitions.}
+if \code{lib.ests} is set to true, then this list also contains:
+\item{lib.ests}{a list with entries corresponding to learners in \code{SL.library}. Each entry is of the same format as \code{est}.}
+\item{lib.cate.fun}{A function that takes as input covariates and returns a list with entries corresponding to learner in \code{SL.library}. Each entry is of the same format as the output of SL.cate.fun.}
 }
 \description{
-This function estimates the average treatment effect conditional on baseline covariates.
+This function estimates the average additive effect of assigning treatments of interest conditional on baseline covariates, compared to assigning treatment at random according to the probabilities seen in the observed population.
 }
 \details{
-If outcome is bounded in [0,1], then this functions respects that fact when estimating the outcome regression but not when estimating the conditional average treatment effect using the double robust loss presented in the below cited paper. Loss functions exist which do respect the bounds on the outcome (see the below cited paper), but we have not implemented them here.
+If outcome is bounded in [0,1], then this functions respects that fact when estimating the outcome regression but not when estimating the conditional average treatment effect using the double robust loss presented in the below cited paper.
 }
 \examples{
 SL.library = c('SL.mean','SL.glm')
@@ -58,13 +69,15 @@ n = 1000
 W = data.frame(W1=rnorm(n),W2=rnorm(n),W3=rnorm(n),W4=rnorm(n))
 A = rbinom(n,1,1/2)
 Y = rbinom(n,1,Qbar(A,W))
+txs = c(0,1)
 
 cate.est = sg.SL(W,A,Y,SL.library=SL.library,family=binomial())$est
-plot(W$W1,cate.est)
+plot(W$W1,cate.est[,2])
 
 # compare to the truth
-cate.truth = Qbar(1,W) - Qbar(0,W)
-plot(cate.est,cate.truth)
+EYw = 0.5*Qbar(0,W)+0.5*Qbar(1,W)
+cate.truth1 = Qbar(1,W) - EYw
+plot(cate.est[,2],cate.truth1)
 }
 \references{
 A. R. Luedtke and M. J. van der Laan, ``Super-learning of an optimal dynamic treatment rule,'' \emph{International Journal of Biostatistics} (to appear), 2014.

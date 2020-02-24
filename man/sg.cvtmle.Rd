@@ -4,29 +4,39 @@
 \alias{sg.cvtmle}
 \title{CV-TMLE Estimating Impact of Treating Optimal Subgroup}
 \usage{
-sg.cvtmle(W, A, Y, SL.library, txs = c(0, 1), baseline.probs = c(0.5,
-  0.5), kappa = 1, g0 = NULL, family = binomial(),
-  sig.trunc = 1e-10, alpha = 0.05, num.folds = 10, num.SL.rep = 5,
+sg.cvtmle(W, A, Y, SL.library, Delta = rep(1,length(A)), OR.SL.library = SL.library,
+  prop.SL.library = SL.library, missingness.SL.library = SL.library, txs = c(0, 1),
+  baseline.probs = c(0.5, 0.5), kappa = 1, g0 = NULL,
+  family = binomial(), sig.trunc = 1e-10, alpha = 0.05,
+  num.folds = 10, num.SL.rep = 5, SL.method = "method.NNLS2",
   num.est.rep = 5, id = NULL, obsWeights = NULL,
-  stratifyCV = FALSE, RR = FALSE, ipcw = FALSE, lib.ests = FALSE,
+  stratifyCV = FALSE, RR = FALSE, lib.ests = FALSE,
   init.ests.out = FALSE, init.ests.in = NULL, verbose = TRUE, ...)
 }
 \arguments{
 \item{W}{data frame with observations in the rows and baseline covariates used to form the subgroup in columns.}
 
-\item{A}{a vector of treatments. This vector may have more than two levels, but the two levels of interest in the treatment assignment problem must be specified in \code{txs}.}
+\item{A}{numeric treatment vector. Treatments of interest specified using the \code{txs} argument.}
 
 \item{Y}{real-valued outcome for which large values are preferred (if use relative risk contrast, then Y should be an indicator of the absence of an adverse event, and the relative risk returned is the relative risk of the adverse event).}
 
-\item{SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate outcome regression, treatment mechanism (if unknown), and conditional average treatment effect function.}
+\item{SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate the conditional average treatment effect functions.}
 
-\item{txs}{A vector of length two indicating the two treatments of interest in A that will be used for the treatment assignment problem. Individuals with treatment \code{A} equal to a value not in \code{txs} will be treated as censored at treatment.}
+\item{Delta}{Vector of the same length as \code{Y}. An entry should equal 1 if the corresponding entry in \code{Y} is observed, and should equal 0 if the corresponding entry in \code{Y} is to be treated as missing.}
 
-\item{baseline.probs}{A vector of length two indicating the (stochastic) treatment rule to use as a baseline when evaluating performance of the estimated optimal treatment rule. In this treatment rule, the first treatment in \code{txs} is assigned with probability \code{baseline.probs[1]} and the second is assigned with probability \code{baseline.probs[2]}. To obtain the marginal mean outcome under the optimal treatment strategy, i.e. not contrasting against any baseline, set \code{baseline.probs=c(0,0)}.}
+\item{OR.SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate the outcome regressions.}
 
-\item{kappa}{maximum allowable probability of treating a randomly drawn individual in the population with the second treatment in \code{txs}. The default of 1 indicates no constraint.}
+\item{prop.SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate the propensity scores.}
 
-\item{g0}{if known (as in a randomized controlled trial), a matrix of probabilities of receiving the first tx in \code{txs} given covariates (first column) and the second treatment in \code{txs} given covariates (second column). Rows correspond to individuals with (\code{W},\code{A},\code{Y}) observed. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
+\item{missingness.SL.library}{SuperLearner library (see documentation for \code{SuperLearner} in the corresponding package) used to estimate the probability of having a missing outcome given treatment and covariates.}
+
+\item{txs}{A vector indicating the two or more treatments of interest in A that will be used for the treatment assignment problem. The treatments in \code{A} may be a superset of those in in txs.}
+
+\item{baseline.probs}{A vector of the same lengths as txs indicating the (stochastic) treatment rule to use as a baseline when evaluating performance of the estimated optimal treatment rule. In this treatment rule, the \code{k}th treatment in \code{txs} is assigned with probability \code{baseline.probs[k]}. To obtain the marginal mean outcome under the optimal treatment strategy, i.e. not contrasting against any baseline, set \code{baseline.probs=rep(0,length(txs))}.}
+
+\item{kappa}{maximum allowable probability of treating a randomly drawn individual in the population with the first treatment in \code{txs}. The default of 1 indicates no constraint.}
+
+\item{g0}{if known (as in a randomized controlled trial), a matrix of probabilities of receiving the treatment corresponding to entry \code{k} in \code{txs} given covariates in the \code{k}th column. Rows correspond to individuals with (\code{W},\code{A},\code{Y}) observed. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
 
 \item{family}{\code{binomial()} if outcome bounded in [0,1], or \code{gaussian()} otherwise.}
 
@@ -38,6 +48,8 @@ sg.cvtmle(W, A, Y, SL.library, txs = c(0, 1), baseline.probs = c(0.5,
 
 \item{num.SL.rep}{number of super-learner repetitions (increasing this number should make the algorithm more stable across seeds).}
 
+\item{SL.method}{method that the SuperLearner function uses to select a convex combination of learners}
+
 \item{num.est.rep}{number of repetitions of estimator, minimizing variation over cross-validation fold assignment (increasing this number should make the algorithm more stable across seeds)}
 
 \item{id}{optional cluster identification variable. Will ensure rows with same id remain in same validation fold each time cross-validation used}
@@ -47,8 +59,6 @@ sg.cvtmle(W, A, Y, SL.library, txs = c(0, 1), baseline.probs = c(0.5,
 \item{stratifyCV}{stratify validation folds by event counts (does this for estimation of outcome regression, treatment mechanism, and conditional average treatment effect function). Useful for rare outcomes}
 
 \item{RR}{estimates relative risk (TRUE) or additive contrast (FALSE) between the mean outcome under optimal versus randomizing treatment via a fair coin toss. For relative risk, estimates the additive outcome of Y not occurring (since throughut we assume Y is beneficial)}
-
-\item{ipcw}{if TRUE, then does not estimate outcome regression (just sets it to zero for all covariate-treatment combinations)}
 
 \item{lib.ests}{Also return estimates based on candidate optimal rule estimates in the super-learner library}
 
@@ -65,43 +75,43 @@ a list containing
 \item{est.mat}{Estimates across repetitions.}
 }
 \description{
-This function estimates the impact of treating the optimal subgroup versus giving the opposite treatment using a CV-TMLE.
+This function uses a cross-validated targeted minimum loss-based estimator (CV-TMLE) to evaluate the impact of treating the optimal subgroup versus following a user-specified static treatment strategy.
 }
 \details{
-Cross-validated targeted minimum loss-based estimator (CV-TMLE) for the impact of treating the optimal subgroup versus either a baseline treatment strategy
+CV-TMLE to evaluate the impact of treating the optimal subgroup versus following a user-specified static treatment strategy.
 
-\code{sig.trunc} is useful if the treatment effect is negative (or small) in all strata of covariates and \code{baseline.probs}=c(1,0), since in these cases we expect that the variance estimate will converge to zero and coverage of the non-truncated confidence interval may suffer. The truncation ensures that the standard deviation estimate is never too small so that coverage of the lower bound is at worst conservative. Coverage of the upper bound also relies on being able to estimate the optimal subgroup well in terms of mean outcome (see the cited papers).
+Coverage of the upper confidence bound relies on being able to estimate the optimal subgroup well in terms of mean outcome (see the cited papers).
 
 We do not have any theoretical justication for the CV-TMLE confidence interval when the treatment effect falls on the decision boundary with positive probability (decision boundary is zero), though we have seen that it performs well in simulations.
 }
 \examples{
 SL.library = c('SL.mean','SL.glm')
-Qbar = function(a,w){plogis(a*w$W1)}
+Qbar = function(a,w){plogis((a==1)*w$W1 - (a==2)*w$W2 + (a==0))}
 n = 500
 W = data.frame(W1=rnorm(n),W2=rnorm(n),W3=rnorm(n),W4=rnorm(n))
-A = rbinom(n,1,1/2)
+A = rbinom(n,1,1/2) + rbinom(n,1,1/2)
 Y = rbinom(n,1,Qbar(A,W))
 
 # comparing the mean outcome under the optimal rule to the mean outcome
 # when treating half of the population at random
 sg.cvtmle(W,A,Y,baseline.probs=c(0.5,0.5),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial())
 # same as above, but adding ids (used in CV splits) and in observation weights
-sg.cvtmle(W,A,Y,baseline.probs=c(0.5,0.5),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),id=rep(1:(n/2),2),obsWeights=1+3*runif(n))
+sg.cvtmle(W,A,Y,SL.library=SL.library,txs=c(0,1,2),baseline.probs=c(0.5,0.5,0),num.SL.rep=2,num.folds=5,family=binomial(),id=rep(1:(n/2),2),obsWeights=1+3*runif(n))
 
 # comparing the mean outcome under the optimal rule against the mean outcome under treating no one
-sg.cvtmle(W,A,Y,baseline.probs=c(1,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),sig.trunc=0.001)
+# when only treatments 0 or 1 can be assigned
+sg.cvtmle(W,A,Y,baseline.probs=c(1,0),txs=c(0,1),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),sig.trunc=0.001)
 # comparing the mean outcome under an optimal rule that treats at most 25 percent of people
-# to the mean outcome under treating 25 percent of people at random
-sg.cvtmle(W,A,Y,baseline.probs=c(0.75,0.25),SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=0.25,family=binomial())
-# same as above, but adding ids (used in CV splits) and in observation weights
-sg.cvtmle(W,A,Y,baseline.probs=c(1,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,family=binomial(),id=rep(1:(n/2),2),obsWeights=rbinom(n,1,2/3)*runif(n))
+# with treatment 0 to the mean outcome under treating 25 percent of people at random
+sg.cvtmle(W,A,Y,baseline.probs=c(0.25,0.375,0.375),SL.library=SL.library,txs=c(0,1,2),num.SL.rep=2,num.folds=5,kappa=0.25,family=binomial())
 
-# comparing the mean outcomes under optimal rules that treats at most prop percent of people
-out_10 = sg.cvtmle(W,A,Y,baseline.probs=c(0,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=0.10,family=binomial(),init.ests.out=TRUE)
+# estimating the mean outcomes under optimal rules that treats at most prop percent of people
+# with treatment 0
+out_10 = sg.cvtmle(W,A,Y,txs=c(0,1,2),baseline.probs=c(0,0,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=0.10,family=binomial(),init.ests.out=TRUE)
 init.ests = out_10$init.ests
-for(prop in seq(0.10,0.25,by=0.05)){
-  print(paste0("Can treat ",prop," proportion of population."))
-  out = sg.cvtmle(W,A,Y,baseline.probs=c(0,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=prop,family=binomial(),init.ests.out=FALSE,init.ests.in=init.ests,verbose=FALSE)
+for(prop in seq(0.10,0.7,by=0.2)){
+  print(paste0("Can treat a ",prop," proportion of population with treatment 0."))
+  out = sg.cvtmle(W,A,Y,txs=c(0,1,2),baseline.probs=c(0,0,0),SL.library=SL.library,num.SL.rep=2,num.folds=5,kappa=prop,family=binomial(),init.ests.out=FALSE,init.ests.in=init.ests,verbose=FALSE)
 	 print(out$est)
 }
 }

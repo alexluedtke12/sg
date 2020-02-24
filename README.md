@@ -20,11 +20,13 @@ Example
 
 We now present an example on a sample of size n=1000. The SuperLearner library is small so that the example does not take long to run -- in practice, we recommend using a larger SuperLearner library.
 
+    ## Warning: package 'SuperLearner' was built under R version 3.5.2
+
     ## Super Learner
 
-    ## Version: 2.0-24
+    ## Version: 2.0-25
 
-    ## Package created on 2018-08-10
+    ## Package created on 2019-08-05
 
 ``` r
 library(sg)
@@ -60,81 +62,81 @@ Below each example, we also print the true impact of implementing the rule, i.e.
 
 ``` r
 # Contrast optimal treatment strategy against treating with probability 1/2
-sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1/2,1/2),SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=1,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
+sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1/2,1/2),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=1,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
 ```
 
     ## $est
-    ## SuperLearner  SL.mean_All   SL.glm_All 
-    ##   0.11957252   0.04102641   0.11957252 
+    ## SuperLearner      SL.mean       SL.glm 
+    ##    0.1002347    0.0481884    0.1002347 
     ## 
     ## $ci
     ##                      lb         ub
-    ## SuperLearner 0.09299205 0.14615300
-    ## SL.mean_All  0.01354829 0.06850453
-    ## SL.glm_All   0.09299205 0.14615300
+    ## SuperLearner 0.07432583 0.12614355
+    ## SL.mean      0.02170676 0.07467005
+    ## SL.glm       0.07432583 0.12614355
     ## 
     ## $est.mat
-    ##              SuperLearner SL.mean_All SL.glm_All
-    ## Repetition 1    0.1180312  0.04098487  0.1180312
-    ## Repetition 2    0.1211139  0.04106795  0.1211139
+    ##              SuperLearner    SL.mean     SL.glm
+    ## Repetition 1   0.09570899 0.04835484 0.09570899
+    ## Repetition 2   0.10476039 0.04802197 0.10476039
 
 ``` r
 # truth
 mean(Qbar(1,W.mc)*((blip.mc>0)-1/2) + Qbar(0,W.mc)*((blip.mc<=0)-1/2))
 ```
 
-    ## [1] 0.1247774
+    ## [1] 0.1251412
 
 ``` r
 # Contrast optimal treatment strategy against treating everyone with tx 0
-sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1,0),SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=1,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
+sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1,0),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=1,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
 ```
 
     ## $est
-    ## SuperLearner  SL.mean_All   SL.glm_All 
-    ##   0.15672328   0.08229836   0.15672328 
+    ## SuperLearner      SL.mean       SL.glm 
+    ##   0.15120948   0.09685982   0.15040278 
     ## 
     ## $ci
     ##                      lb        ub
-    ## SuperLearner 0.11095379 0.2024928
-    ## SL.mean_All  0.02744129 0.1371554
-    ## SL.glm_All   0.11095379 0.2024928
+    ## SuperLearner 0.10614544 0.1962735
+    ## SL.mean      0.04391033 0.1498093
+    ## SL.glm       0.10538518 0.1954204
     ## 
     ## $est.mat
-    ##              SuperLearner SL.mean_All SL.glm_All
-    ## Repetition 1    0.1542718  0.08180770  0.1542718
-    ## Repetition 2    0.1591747  0.08278901  0.1591747
+    ##              SuperLearner    SL.mean    SL.glm
+    ## Repetition 1    0.1531282 0.09701104 0.1515148
+    ## Repetition 2    0.1492907 0.09670860 0.1492907
 
 ``` r
 # truth
 mean((blip.mc)*(blip.mc>=0))
 ```
 
-    ## [1] 0.16659
+    ## [1] 0.1674317
 
 ``` r
 # Resource constraint: at most 25% can be treated. Contrast against treating everyone with tx 0
-sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1,0),SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=0.25,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
+sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1,0),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=0.25,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
 ```
 
     ## $est
-    ## SuperLearner  SL.mean_All   SL.glm_All 
-    ##  0.122349451 -0.001525606  0.121357394 
+    ## SuperLearner      SL.mean       SL.glm 
+    ##   0.14105268   0.09691537   0.14105268 
     ## 
     ## $ci
-    ##                       lb         ub
-    ## SuperLearner  0.09466465 0.15003425
-    ## SL.mean_All  -0.02794915 0.02489793
-    ## SL.glm_All    0.09362072 0.14909407
+    ##                      lb        ub
+    ## SuperLearner 0.09308925 0.1890161
+    ## SL.mean      0.04399252 0.1498382
+    ## SL.glm       0.09308832 0.1890170
     ## 
     ## $est.mat
-    ##              SuperLearner  SL.mean_All SL.glm_All
-    ## Repetition 1    0.1232119 -0.006544996  0.1212211
-    ## Repetition 2    0.1214870  0.003493783  0.1214936
+    ##              SuperLearner    SL.mean    SL.glm
+    ## Repetition 1    0.1389333 0.09686683 0.1389333
+    ## Repetition 2    0.1431721 0.09696391 0.1431721
 
 ``` r
 # truth
 mean((blip.mc)*(blip.mc>=max(quantile(blip.mc,1-0.25),0)))
 ```
 
-    ## [1] 0.1295534
+    ## [1] 0.1297942
