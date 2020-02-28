@@ -1,11 +1,12 @@
 Package: sg
 Title: Targeted Learning for Subgroup Analyses
-Version: 0.4
+Version: 0.41
 Authors@R: person("Alex", "Luedtke", email = "aluedtke@uw.edu", role = c("aut", "cre"))
 Description: Targeted Learning for conducting subgroup analyses and estimating the impact of implementing the optimal individualized treatment strategy in the population.
 Depends: R (>= 3.5.0)
 Imports:
-	SuperLearner (>= 2.0)
+	SuperLearner (>= 2.0),
+	Hmisc
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

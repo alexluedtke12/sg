@@ -2,8 +2,11 @@
 # g.est is vector giving estimated probability of A=1 given W
 
 .sgtmle = function(W,A,Y,txs,Q.est,blip.est,g.est,baseline.probs,family=binomial(),kappa=1,sig.trunc=0.1,alpha=0.05,trunc.Q=c(0.005,0.995),obsWeights=NULL,RR=FALSE){
+	require(Hmisc)
 	n = nrow(W)
-	if(is.null(obsWeights)) obsWeights = rep(1,length(Y))	
+	if(is.null(obsWeights)) obsWeights = rep(1,length(Y))
+	obsWeights = obsWeights/mean(obsWeights)
+
 	if(family$family=='binomial') {
 		for(i in seq(txs)){Q.est[,i] = pmin(pmax(Q.est[,i],trunc.Q[1]),trunc.Q[2])}
 		offs = family$linkfun(Reduce("+",lapply(seq(txs),function(i){
@@ -19,15 +22,18 @@
 	# treatment effect of assigning first treatment in txs vs assigning the next best treatment
 	# useful when kappa<1 (so that there is a constraint on this first treatment resource)
 	one.vs.next.best = blip.est[,1] - apply(blip.est[,-1,drop=FALSE],1,max)
-	tau = max(quantile(one.vs.next.best,1-kappa,type=1),0)
+	tau = wtd.quantile(one.vs.next.best, obsWeights, type="i/n", probs=1-kappa)
+	if(mean((one.vs.next.best>tau) * obsWeights)/mean(obsWeights)>kappa){
+	  tau = min(one.vs.next.best[one.vs.next.best>tau])
+	}
 
 	# if one.vs.next.best<tau, then the individual will not be treated with tx 1 in the presence of the resource constraint
 	blip.est[one.vs.next.best<tau,1] = -Inf
 
 	# probability of always treating someone with treatment 1 (one.vs.next.best>tau)
-	alway.trt1.prob = mean(one.vs.next.best>tau)
+	alway.trt1.prob = mean((one.vs.next.best>tau) * obsWeights)
 	# probability of sometimes treating someone with treatment 1 (one.vs.next.best==tau) -- prob determined by resource constraint
-	sometimes.trt1.prob = mean(one.vs.next.best==tau)
+	sometimes.trt1.prob = mean((one.vs.next.best==tau) * obsWeights)
 
 	# vector of optimal treatment probabilities
 	# (allowed to be stochastic to deal with resource constraint. typically is deterministic)
@@ -62,7 +68,7 @@
 		Q[,i]*(g.star[,i]-baseline.probs[i])
 		}))
 
-	est.add = mean(Q.contrast)
+	est.add = mean(obsWeights * Q.contrast)
 
 	ic.add = obsWeights * (H*(Y-QA) - tau*(g.star[,1]-kappa) + Q.contrast - est.add)
 
@@ -71,7 +77,7 @@
 		H.bp = Reduce("+",lapply(seq(txs),function(i){baseline.probs[i]*(A==txs[i])/g.est[,i]}))
 		eps.bp = suppressWarnings(coef(glm(Y ~ -1 + offset(offs.bp) + H.bp,family=family,weights=obsWeights)))
 		Qbp.star = family$linkinv(offs.bp + eps.bp * Reduce("+",lapply(seq(txs),function(i){baseline.probs[i]/g.est[,i]})))
-		EYbp.star = mean(Qbp.star)
+		EYbp.star = mean(obsWeights * Qbp.star)
 		est = (1 - (EYbp.star + est.add))/(1-EYbp.star) # recall: relative risk of 1-Y, since Y beneficial
 		ic = -(ic.add/(1 - (EYbp.star + est.add)) + obsWeights * (H.bp * (Y-Qbp.star) + Qbp.star - EYbp.star) * (1/(1 - (EYbp.star + est.add))-1/(1-EYbp.star)))
 		ci = exp(log(est) + c(-1,1) * qnorm(1-alpha/2)*max(sd(ic),sig.trunc)/sqrt(n))

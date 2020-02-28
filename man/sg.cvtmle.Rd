@@ -34,7 +34,7 @@ sg.cvtmle(W, A, Y, SL.library, Delta = rep(1,length(A)), OR.SL.library = SL.libr
 
 \item{baseline.probs}{A vector of the same lengths as txs indicating the (stochastic) treatment rule to use as a baseline when evaluating performance of the estimated optimal treatment rule. In this treatment rule, the \code{k}th treatment in \code{txs} is assigned with probability \code{baseline.probs[k]}. To obtain the marginal mean outcome under the optimal treatment strategy, i.e. not contrasting against any baseline, set \code{baseline.probs=rep(0,length(txs))}.}
 
-\item{kappa}{maximum allowable probability of treating a randomly drawn individual in the population with the first treatment in \code{txs}. The default of 1 indicates no constraint.}
+\item{kappa}{maximum allowable probability of treating a randomly drawn individual in the population with the first treatment in \code{txs}. The default of 1 indicates no constraint. If \code{obsWeights} are specified, then enforces the constraint in the weighted population of interest.}
 
 \item{g0}{if known (as in a randomized controlled trial), a matrix of probabilities of receiving the treatment corresponding to entry \code{k} in \code{txs} given covariates in the \code{k}th column. Rows correspond to individuals with (\code{W},\code{A},\code{Y}) observed. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
 
