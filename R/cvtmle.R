@@ -70,7 +70,7 @@
 
 	est.add = mean(obsWeights * Q.contrast)
 
-	ic.add = obsWeights * (H*(Y-QA) - tau*(g.star[,1]-kappa) + Q.contrast - est.add)
+	ic.add = obsWeights * (H*(Y-QA) - max(tau,0)*(g.star[,1]-kappa) + Q.contrast - est.add)
 
 	if(RR){ # Get a targeted estimate of mean outcome under baseline.probs, and then add this to the contrast from the previous
 		offs.bp = family$linkfun(Reduce("+",lapply(seq(txs),function(i){baseline.probs[i]*Q.est[,i]})))
