@@ -237,6 +237,17 @@ sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.li
 		stop("Length of init.ests.in should be the same as num.est.rep")
 	}
 
+	# reformat SL.library so that it is a list of length-1 or length-2 vectors
+	# (where the first entry in a length-2 vector is the learning algorithm,
+	#  the second is the screening algorithm)
+	SL.library = do.call(c,lapply(SL.library,function(z){
+	  if(length(z)>2){
+	    lapply(z[2:length(z)],function(zz){c(z[1],zz)})
+	  } else {
+	    return(list(z))
+	  }
+	}))
+
 	fits = lapply(1:num.est.rep,function(i){
 		if(verbose) message(paste0('Running estimator iteration ',i,'.'))
 		if(length(init.ests.in)>0){

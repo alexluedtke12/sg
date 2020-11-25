@@ -14,6 +14,17 @@ sg.SL = function(W,A,Y,Delta=rep(1,length(A)),SL.library,OR.SL.library=SL.librar
 		warning("The project argument deprecated.")
 	}
 
+	# reformat SL.library so that it is a list of length-1 or length-2 vectors
+	# (where the first entry in a length-2 vector is the learning algorithm,
+	#  the second is the screening algorithm)
+	SL.library = do.call(c,lapply(SL.library,function(z){
+	  if(length(z)>2){
+	    lapply(z[2:length(z)],function(zz){c(z[1],zz)})
+	  } else {
+	    return(list(z))
+	  }
+	}))
+
 	# Recode missing Y values to 0
 	Y[Delta==0] = 0
 
