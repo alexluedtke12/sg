@@ -63,18 +63,18 @@ blip.mc = Qbar(1,W.mc)-Qbar(0,W.mc)
 Below each example, we also print the true impact of implementing the rule, i.e. the quantity that sg.cvtmle is estimating.
 ```{r}
 # Contrast optimal treatment strategy against treating with probability 1/2
-sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1/2,1/2),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=1,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
+sg.cvtmle(W,A,Y,SL.library=SL.library,txs=c(0,1),baseline.probs=c(1/2,1/2),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=1,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
 # truth
 mean(Qbar(1,W.mc)*((blip.mc>0)-1/2) + Qbar(0,W.mc)*((blip.mc<=0)-1/2))
 
 
 # Contrast optimal treatment strategy against treating everyone with tx 0
-sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1,0),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=1,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
+sg.cvtmle(W,A,Y,SL.library=SL.library,txs=c(0,1),baseline.probs=c(1,0),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=1,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
 # truth
 mean((blip.mc)*(blip.mc>=0))
 
 # Resource constraint: at most 25% can be treated. Contrast against treating everyone with tx 0
-sg.cvtmle(W,A,Y,txs=c(0,1),baseline.probs=c(1,0),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=0.25,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
+sg.cvtmle(W,A,Y,SL.library=SL.library,txs=c(0,1),baseline.probs=c(1,0),CATE.SL.library=SL.library,sig.trunc=0.001,family=binomial(),kappa=0.25,num.SL.rep=2,num.est.rep=2,lib.ests=TRUE,verbose=FALSE)
 # truth
 mean((blip.mc)*(blip.mc>=max(quantile(blip.mc,1-0.25),0)))
 ```
