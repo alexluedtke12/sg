@@ -1,7 +1,7 @@
 # Standard deviation truncated at sig.trunc
 # g.est is vector giving estimated probability of A=1 given W
 
-.sgtmle = function(W,A,Y,txs,Q.est,blip.est,g.est,baseline.probs,family=binomial(),kappa=1,sig.trunc=0.1,alpha=0.05,trunc.Q=c(0.005,0.995),obsWeights=NULL,RR=FALSE){
+.sgtmle = function(W,A,Y,txs,Q.est,blip.est,g.est,baseline.probs,family,kappa=1,sig.trunc=0.1,alpha=0.05,trunc.Q=c(0.005,0.995),obsWeights=NULL,RR=FALSE){
 	require(Hmisc)
 	n = nrow(W)
 	if(is.null(obsWeights)) obsWeights = rep(1,length(Y))
@@ -94,7 +94,7 @@
 # Helper function used by sg.cvtmle
 # Inputs the same as for those functions
 
-.sgcvtmle.preprocess = function(W,A,Y,Delta,SL.library,OR.SL.library,prop.SL.library,missingness.SL.library,txs,g0=NULL,family=binomial(),num.folds=10,num.SL.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,SL.method="method.NNLS2"){
+.sgcvtmle.preprocess = function(W,A,Y,Delta,SL.library,OR.SL.library,prop.SL.library,missingness.SL.library,txs,family,g0=NULL,num.folds=10,num.SL.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,SL.method="method.NNLS2"){
 	require(SuperLearner)
 
 	# Recode missing Y values to 0
@@ -253,17 +253,17 @@ sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.li
 		if(length(init.ests.in)>0){
 			init.ests = init.ests.in[[i]]
 		} else {
-			init.ests = .sgcvtmle.preprocess(W,A,Y,Delta,SL.library,OR.SL.library,prop.SL.library,missingness.SL.library,txs,g0=g0,family=family,num.folds=num.folds,num.SL.rep=num.SL.rep,id=id,obsWeights=obsWeights,stratifyCV=stratifyCV,SL.method=SL.method)
+			init.ests = .sgcvtmle.preprocess(W,A,Y,Delta,SL.library,OR.SL.library,prop.SL.library,missingness.SL.library,txs,family=family,g0=g0,num.folds=num.folds,num.SL.rep=num.SL.rep,id=id,obsWeights=obsWeights,stratifyCV=stratifyCV,SL.method=SL.method)
 		}
 		Q.est = init.ests$Q.est
 		blip.est = init.ests$blip.est
 		g.est = init.ests$g.est
 		lib.blip.est = init.ests$lib.blip.est
 
-		out = .sgtmle(W,A,Y,txs,Q.est,blip.est,g.est,baseline.probs,kappa=kappa,sig.trunc=sig.trunc,alpha=alpha,obsWeights=obsWeights,RR=RR)
+		out = .sgtmle(W,A,Y,txs,Q.est,blip.est,g.est,baseline.probs,family=family,kappa=kappa,sig.trunc=sig.trunc,alpha=alpha,obsWeights=obsWeights,RR=RR)
 		if(lib.ests){
 			out.lib = lapply(lib.blip.est,function(lbe.curr){
-				return(.sgtmle(W,A,Y,txs,Q.est,lbe.curr,g.est,baseline.probs,kappa=kappa,sig.trunc=sig.trunc,alpha=alpha,obsWeights=obsWeights,RR=RR))
+				return(.sgtmle(W,A,Y,txs,Q.est,lbe.curr,g.est,baseline.probs,family=family,kappa=kappa,sig.trunc=sig.trunc,alpha=alpha,obsWeights=obsWeights,RR=RR))
 			})
 			out.list = list(ests=c(out$est,sapply(out.lib,function(x){x$est})),vars=c(var(out$ic),sapply(out.lib,function(x){var(x$ic)})),algs=c('SuperLearner',SL.library))
 		} else {
