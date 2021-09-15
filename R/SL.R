@@ -1,7 +1,7 @@
 
 #' SuperLearner for Estimating the Conditional Average Treatment Effect
 
-sg.SL = function(W,A,Y,Delta=rep(1,length(A)),SL.library,OR.SL.library=SL.library,prop.SL.library=SL.library,missingness.SL.library=SL.library,txs=c(0,1),g0=NULL,family=binomial(),num.SL.folds=10,num.SL.rep=5,SL.method="method.NNLS2",id=NULL,obsWeights=NULL,stratifyCV=FALSE,lib.ests=FALSE,...){
+sg.SL = function(W,A,Y,Delta=rep(1,length(A)),SL.library,OR.SL.library=SL.library,prop.SL.library=SL.library,missingness.SL.library=SL.library,txs=c(0,1),g0=NULL,Q0=NULL,family=binomial(),num.SL.folds=10,num.SL.rep=5,SL.method="method.NNLS2",id=NULL,obsWeights=NULL,stratifyCV=FALSE,lib.ests=FALSE,...){
 	require(SuperLearner)
 
 	if(any(names(list(...))=="separate.reg")) warning("The separate.reg option is deprecated. All outcome regressions are now stratified based on treatment status, i.e. the deprecated separate.reg always equals TRUE.")
@@ -70,9 +70,13 @@ sg.SL = function(W,A,Y,Delta=rep(1,length(A)),SL.library,OR.SL.library=SL.librar
 	# modify treatment probability to also account for missingness probability
 	g = g * do.call(cbind,lapply(1:length(txs),function(i){g.delta}))
 
-	Qbar = do.call(cbind,lapply(txs,function(a){
-		Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(Y[A==a],W[A==a,],newX=W,family=family,SL.library=OR.SL.library,cvControl=list(V=num.SL.folds,stratifyCV=(family$family=='binomial') & stratifyCV),id=id[A==a],obsWeights=obsWeights[A==a])$SL.predict[,1]}))/num.SL.rep
-		}))
+	if(length(Q0)==0){
+		Qbar = do.call(cbind,lapply(txs,function(a){
+			Reduce('+',lapply(1:num.SL.rep,function(i){SuperLearner(Y[A==a],W[A==a,],newX=W,family=family,SL.library=OR.SL.library,cvControl=list(V=num.SL.folds,stratifyCV=(family$family=='binomial') & stratifyCV),id=id[A==a],obsWeights=obsWeights[A==a])$SL.predict[,1]}))/num.SL.rep
+			}))
+	} else {
+		Qbar = Q0
+	}
 
 	# for each treatment, SL.objs contains a list of SL fits estimating the average treatment
 	# effect of assigning that treatment versus assigning the given treatment at random according

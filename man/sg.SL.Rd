@@ -6,7 +6,7 @@
 \usage{
 sg.SL(W, A, Y, SL.library, Delta = rep(1,length(A)), OR.SL.library = SL.library,
   prop.SL.library = SL.library, missingness.SL.library = SL.library, txs = c(0, 1), g0 = NULL,
-  family = binomial(), num.SL.folds = 10, num.SL.rep = 5,
+  Q0 = NULL, family = binomial(), num.SL.folds = 10, num.SL.rep = 5,
   SL.method = "method.NNLS2", id = NULL, obsWeights = NULL,
   stratifyCV = FALSE, lib.ests = FALSE, ...)
 }
@@ -30,6 +30,9 @@ sg.SL(W, A, Y, SL.library, Delta = rep(1,length(A)), OR.SL.library = SL.library,
 \item{txs}{A vector indicating the two or more treatments of interest in A that will be used for the treatment assignment problem. The treatments in \code{A} may be a superset of those in in txs.}
 
 \item{g0}{if known (as in a randomized controlled trial), a matrix of probabilities of receiving the treatment corresponding to entry \code{k} in \code{txs} given covariates in the \code{k}th column. Rows correspond to individuals with (\code{W},\code{A},\code{Y}) observed. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
+
+\item{Q0}{a user-supplied matrix of estimates of the mean outcome of \code{Y} conditional on \code{A} and \code{X}. The matrix should have \code{n=nrow(W)} rows and \code{length(txs)} columns, where row \code{j} and column \code{k} contain the estimated outcome regression for the covariate level of individual \code{j} at treatment level \code{txs[k]}.}
+
 
 \item{family}{\code{binomial()} if outcome bounded in [0,1], or \code{gaussian()} otherwise. See \code{Details}.}
 

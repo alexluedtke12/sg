@@ -6,10 +6,10 @@
 \usage{
 sg.cvtmle(W, A, Y, SL.library, Delta = rep(1,length(A)), OR.SL.library = SL.library,
   prop.SL.library = SL.library, missingness.SL.library = SL.library, txs = c(0, 1),
-  baseline.probs = c(0.5, 0.5), kappa = 1, g0 = NULL,
+  baseline.probs = c(0.5, 0.5), kappa = 1, g0 = NULL, Q0 = NULL,
   family = binomial(), sig.trunc = 1e-10, alpha = 0.05,
   num.folds = 10, num.SL.rep = 5, SL.method = "method.NNLS2",
-  num.est.rep = 5, id = NULL, obsWeights = NULL,
+  num.est.rep = 5, id = NULL, folds = NULL, obsWeights = NULL,
   stratifyCV = FALSE, RR = FALSE, lib.ests = FALSE,
   init.ests.out = FALSE, init.ests.in = NULL, verbose = TRUE, ...)
 }
@@ -38,6 +38,8 @@ sg.cvtmle(W, A, Y, SL.library, Delta = rep(1,length(A)), OR.SL.library = SL.libr
 
 \item{g0}{if known (as in a randomized controlled trial), a matrix of probabilities of receiving the treatment corresponding to entry \code{k} in \code{txs} given covariates in the \code{k}th column. Rows correspond to individuals with (\code{W},\code{A},\code{Y}) observed. If \code{NULL}, \code{SuperLearner} will be used to estimate these probabilities.}
 
+\item{Q0}{a user-supplied list of matrices of estimates of the mean outcome of \code{Y} conditional on \code{A} and \code{X}. To ensure proper cross-validation, entry \code{i} in this list should have been fitted without using the data included in the validation fold in \code{fold[[i]]}; for this reason, \code{fold} must be non-null if \code{Q0} is set to a non-null value. The matrix in entry \code{i} should have \code{n=nrow(W)} rows and \code{length(txs)} columns, where row \code{j} and column \code{k} contain the estimated outcome regression for the covariate level of individual \code{j} at treatment level \code{txs[k]}.}
+
 \item{family}{\code{binomial()} if outcome bounded in [0,1], or \code{gaussian()} otherwise.}
 
 \item{sig.trunc}{value at which the standard deviation estimate is truncated.}
@@ -53,6 +55,8 @@ sg.cvtmle(W, A, Y, SL.library, Delta = rep(1,length(A)), OR.SL.library = SL.libr
 \item{num.est.rep}{number of repetitions of estimator, minimizing variation over cross-validation fold assignment (increasing this number should make the algorithm more stable across seeds)}
 
 \item{id}{optional cluster identification variable. Will ensure rows with same id remain in same validation fold each time cross-validation used}
+
+\item{folds}{folds to be used when performing cross-validation step of the CV-TMLE. Should be in the same format as the output of \code{CVFolds} function from the \code{SuperLearner} package. If this argument is specified, then num.folds will automatically be set to 1.}
 
 \item{obsWeights}{observation weights}
 

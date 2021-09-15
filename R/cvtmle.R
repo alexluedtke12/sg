@@ -94,7 +94,7 @@
 # Helper function used by sg.cvtmle
 # Inputs the same as for those functions
 
-.sgcvtmle.preprocess = function(W,A,Y,Delta,SL.library,OR.SL.library,prop.SL.library,missingness.SL.library,txs,family,g0=NULL,num.folds=10,num.SL.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,SL.method="method.NNLS2"){
+.sgcvtmle.preprocess = function(W,A,Y,Delta,SL.library,OR.SL.library,prop.SL.library,missingness.SL.library,txs,family,g0=NULL,Q0=NULL,num.folds=10,num.SL.rep=5,id=NULL,folds=NULL,obsWeights=NULL,stratifyCV=FALSE,SL.method="method.NNLS2"){
 	require(SuperLearner)
 
 	# Recode missing Y values to 0
@@ -102,9 +102,12 @@
 
 	n = nrow(W)
 	if(!is.null(id) & stratifyCV==TRUE) stop('Stratified sampling with id not currently implemented.')
-	folds = CVFolds(n,id,Y,SuperLearner.CV.control(stratifyCV=stratifyCV,V=num.folds))
+	if(is.null(folds)){
+		folds = CVFolds(n,id,Y,SuperLearner.CV.control(stratifyCV=stratifyCV,V=num.folds))
+	}
 
-	ests = lapply(folds,function(val.inds){
+	ests = lapply(seq(folds),function(k){
+		val.inds = folds[[k]]
 
 		W.trn = W[-val.inds,,drop=FALSE]
 		A.trn = A[-val.inds]
@@ -157,26 +160,30 @@
 		g.val = g.val * do.call(cbind,lapply(1:length(txs),function(i){g.delta.val}))
 		g.trn = g.trn * do.call(cbind,lapply(1:length(txs),function(i){g.delta.trn}))
 
-		# fit outcome regression
-		Qbar = do.call(cbind,lapply(txs,function(a){suppressWarnings(
-			Reduce('+',lapply(1:num.SL.rep,function(i){
-					if(sum(A.trn==a)>0){
-						return(SuperLearner(
-							Y.trn[A.trn==a],
-							data.frame(W.trn,A=A.trn)[A.trn==a,],
-							newX=data.frame(rbind(W.val,W.trn),A=a),
-							family=family,
-							SL.library=OR.SL.library,
-							obsWeights=obsWeights.trn[A.trn==a],
-							id=id.trn[A.trn==a],
-							cvControl=SuperLearner.CV.control(stratifyCV=stratifyCV&(family$family=='binomial'),V=num.folds)
-							)$SL.predict[,1])
-					} else {
-						# warning("No individuals in a training fold received one of the two treatments when estimating the outcome regression.")
-						return(rep(mean(Y.trn),nrow(W.val)+nrow(W.trn)))
-					}
-				}))/num.SL.rep)}
-					))
+		if(length(Q0)==0){
+			# fit outcome regression
+			Qbar = do.call(cbind,lapply(txs,function(a){suppressWarnings(
+				Reduce('+',lapply(1:num.SL.rep,function(i){
+						if(sum(A.trn==a)>0){
+							return(SuperLearner(
+								Y.trn[A.trn==a],
+								data.frame(W.trn,A=A.trn)[A.trn==a,],
+								newX=data.frame(rbind(W.val,W.trn),A=a),
+								family=family,
+								SL.library=OR.SL.library,
+								obsWeights=obsWeights.trn[A.trn==a],
+								id=id.trn[A.trn==a],
+								cvControl=SuperLearner.CV.control(stratifyCV=stratifyCV&(family$family=='binomial'),V=num.folds)
+								)$SL.predict[,1])
+						} else {
+							# warning("No individuals in a training fold received one of the two treatments when estimating the outcome regression.")
+							return(rep(mean(Y.trn),nrow(W.val)+nrow(W.trn)))
+						}
+					}))/num.SL.rep)}
+						))
+		} else {
+			Qbar = rbind(Q0[[k]][val.inds,],Q0[[k]][-val.inds,])
+		}
 		Q.val = Qbar[1:nrow(W.val),]
 
 		tmp = lapply(seq(txs),function(i){
@@ -207,7 +214,7 @@
 
 #' CV-TMLE Estimating Impact of Treating Optimal Subgroup
 
-sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.library,prop.SL.library=SL.library,missingness.SL.library=SL.library,txs=c(0,1),baseline.probs=c(0.5,0.5),kappa=1,g0=NULL,family=binomial(),sig.trunc=1e-10,alpha=0.05,num.folds=10,num.SL.rep=5,SL.method="method.NNLS2",num.est.rep=5,id=NULL,obsWeights=NULL,stratifyCV=FALSE,RR=FALSE,lib.ests=FALSE,init.ests.out=FALSE,init.ests.in=NULL,verbose=TRUE,...){
+sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.library,prop.SL.library=SL.library,missingness.SL.library=SL.library,txs=c(0,1),baseline.probs=c(0.5,0.5),kappa=1,g0=NULL,Q0=NULL,family=binomial(),sig.trunc=1e-10,alpha=0.05,num.folds=10,num.SL.rep=5,SL.method="method.NNLS2",num.est.rep=5,id=NULL,folds=NULL,obsWeights=NULL,stratifyCV=FALSE,RR=FALSE,lib.ests=FALSE,init.ests.out=FALSE,init.ests.in=NULL,verbose=TRUE,...){
 	require(SuperLearner)
 
 	if(any(names(list(...))=="bothactive")) {
@@ -237,6 +244,33 @@ sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.li
 		stop("Length of init.ests.in should be the same as num.est.rep")
 	}
 
+	# if folds is specified, then ignore the value of num.est.rep and only use the
+	# supplied folds (corresponds to a particular realization of the folds that could
+	# have been used if num.est.rep had been 1)
+	if(num.est.rep>1 & !is.null(folds)){
+		warning("Because the folds input was specified, automatically setting num.est.rep to 1.")
+		num.est.rep = 1
+	}
+
+	# if folds is specified, then stratifyCV is not respected for the purpose of choosing folds in
+	# the outer optimization. Instead, the user should ensure that the supplied folds are
+	# stratified by event counts if desired
+	if(stratifyCV & !is.null(folds)){
+		warning("Because the folds input was specified, stratifyCV will only be used to stratify inner cross-validation used to estimate nuisance functions. If stratification based on event count is desired for choosing the folds in the outer layer of cross-validation, then the user should ensure that the supplied folds respect these event counts.")
+	}
+
+	# if folds is specified, then num.folds must match the number of folds in folds. If it doesn't,
+	# it will just be set to this number.
+	if(num.folds!=length(folds) & !is.null(folds)){
+		warning("The num.folds input must match the length of num.folds. Since it doesn't, num.folds has been reset to be equal to length(num.folds).")
+		num.folds = length(folds)
+	}
+
+	# To ensure proper cross-fitting, folds must be specified along with Q0. 
+	if(!is.null(Q0) & is.null(folds)){
+		stop("folds must specified if Q0 is specified.")
+	}
+
 	# reformat SL.library so that it is a list of length-1 or length-2 vectors
 	# (where the first entry in a length-2 vector is the learning algorithm,
 	#  the second is the screening algorithm)
@@ -253,7 +287,7 @@ sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.li
 		if(length(init.ests.in)>0){
 			init.ests = init.ests.in[[i]]
 		} else {
-			init.ests = .sgcvtmle.preprocess(W,A,Y,Delta,SL.library,OR.SL.library,prop.SL.library,missingness.SL.library,txs,family=family,g0=g0,num.folds=num.folds,num.SL.rep=num.SL.rep,id=id,obsWeights=obsWeights,stratifyCV=stratifyCV,SL.method=SL.method)
+			init.ests = .sgcvtmle.preprocess(W,A,Y,Delta,SL.library,OR.SL.library,prop.SL.library,missingness.SL.library,txs,family=family,g0=g0,Q0=Q0,num.folds=num.folds,num.SL.rep=num.SL.rep,id=id,folds=folds,obsWeights=obsWeights,stratifyCV=stratifyCV,SL.method=SL.method)
 		}
 		Q.est = init.ests$Q.est
 		blip.est = init.ests$blip.est
