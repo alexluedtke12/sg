@@ -66,7 +66,10 @@ This function estimates the average additive effect of assigning treatments of i
 If outcome is bounded in [0,1], then this functions respects that fact when estimating the outcome regression but not when estimating the conditional average treatment effect using the double robust loss presented in the below cited paper.
 }
 \examples{
+# SuperLearner library
 SL.library = c('SL.mean','SL.glm')
+
+# simulated data
 Qbar = function(a,w){plogis(a*w$W1)}
 n = 1000
 W = data.frame(W1=rnorm(n),W2=rnorm(n),W3=rnorm(n),W4=rnorm(n))
@@ -74,8 +77,15 @@ A = rbinom(n,1,1/2)
 Y = rbinom(n,1,Qbar(A,W))
 txs = c(0,1)
 
-cate.est = sg.SL(W,A,Y,SL.library=SL.library,family=binomial())$est
+# sg.SL fit
+out = sg.SL(W,A,Y,SL.library=SL.library,family=binomial())
+
+# CATE estimate
+cate.est = out$est
 plot(W$W1,cate.est[,2])
+
+# can also call predict to get predictions
+predict(out,data.frame(W1=0,W2=0,W3=0,W4=0))
 
 # compare to the truth
 EYw = 0.5*Qbar(0,W)+0.5*Qbar(1,W)
@@ -89,6 +99,6 @@ A. R. Luedtke and M. J. van der Laan, ``Super-learning of an optimal dynamic tre
 \keyword{average}
 \keyword{blip}
 \keyword{conditional}
-\keyword{effect,}
+\keyword{effect}
 \keyword{function}
 \keyword{treatment}

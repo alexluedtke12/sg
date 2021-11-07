@@ -105,8 +105,18 @@ sg.SL = function(W,A,Y,Delta=rep(1,length(A)),SL.library,OR.SL.library=SL.librar
 			names(list.out) = SL.library
 			return(list.out) }
 		lib.ests = lib.cate.fun(W)
-		return(list(est=blip,SL.cate.fun=SL.cate.fun,SL=SL.objs,Qbar=Qbar,lib.ests=lib.ests,lib.cate.fun=lib.cate.fun))
+		out = list(est=blip,SL.cate.fun=SL.cate.fun,SL=SL.objs,Qbar=Qbar,lib.ests=lib.ests,lib.cate.fun=lib.cate.fun)
 	} else {
-		return(list(est=blip,SL.cate.fun=SL.cate.fun,SL=SL.objs,Qbar=Qbar))
+		out = list(est=blip,SL.cate.fun=SL.cate.fun,SL=SL.objs,Qbar=Qbar)
+	}
+	class(out) = "sg.SL"
+	return(out)
+}
+
+predict.sg.SL = function(object, newdata =  NULL){
+	if(length(newdata)>0){
+		return(object$SL.cate.fun(newdata))
+	} else {
+		return(object$est)
 	}
 }
