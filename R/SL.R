@@ -89,22 +89,36 @@ sg.SL = function(W,A,Y,Delta=rep(1,length(A)),SL.library,OR.SL.library=SL.librar
 			SuperLearner(Z,W,SL.library=SL.library,cvControl=blip.cvControl,id=id,obsWeights=obsWeights,method=SL.method)})
 		})
 	SL.cate.fun = function(w){do.call(cbind,lapply(seq(txs),function(i){
-		out = Reduce('+',lapply(1:num.SL.rep,function(j){predict(SL.objs[[i]][[j]],newdata=w)$pred}))/num.SL.rep
+		if(is.null(w)){
+			out = Reduce('+',lapply(1:num.SL.rep,function(j){predict(SL.objs[[i]][[j]])$pred}))/num.SL.rep
+		} else {
+			out = Reduce('+',lapply(1:num.SL.rep,function(j){predict(SL.objs[[i]][[j]],newdata=w)$pred}))/num.SL.rep
+		}
 		if(family$family=='binomial') out = pmin(pmax(out,-1),1)
 		return(out)}))}
-	blip = SL.cate.fun(W)
+	# by calling SL.cate.fun on NULL, predictions at the data frame W used to train the SuperLearner are returned.
+	# The reason for inputting NULL here, rather than W, is that at least one SL wrapper (SL.dbarts) does not have predict
+	# functionality as of 5/15/2022, and so an error will be returned if the below is replaced by "blip = SL.cate.fun(W)"
+	blip = SL.cate.fun(NULL)
 
 	if(lib.ests){
 		lib.cate.fun = function(w){
 			list.out = lapply(seq(SL.library),function(k){
 				do.call(cbind,lapply(seq(txs),function(i){
-					out = Reduce('+',lapply(1:num.SL.rep,function(j){predict(SL.objs[[i]][[j]],newdata=w)$library.predict[,k]}))/num.SL.rep
+					if(is.null(w)){
+						out = Reduce('+',lapply(1:num.SL.rep,function(j){predict(SL.objs[[i]][[j]])$library.predict[,k]}))/num.SL.rep
+					} else {
+						out = Reduce('+',lapply(1:num.SL.rep,function(j){predict(SL.objs[[i]][[j]],newdata=w)$library.predict[,k]}))/num.SL.rep
+					}
 					if(family$family=='binomial') out = pmin(pmax(out,-1),1)
 					return(out)}))
 				})
 			names(list.out) = SL.library
 			return(list.out) }
-		lib.ests = lib.cate.fun(W)
+		# by calling lib.cate.fun on NULL, predictions at the data frame W used to train the SuperLearner are returned.
+		# The reason for inputting NULL here, rather than W, is that at least one SL wrapper (SL.dbarts) does not have predict
+		# functionality as of 5/15/2022, and so an error will be returned if the below is replaced by "lib.ests = lib.cate.fun(W)"
+		lib.ests = lib.cate.fun(NULL)
 		out = list(est=blip,SL.cate.fun=SL.cate.fun,SL=SL.objs,Qbar=Qbar,lib.ests=lib.ests,lib.cate.fun=lib.cate.fun)
 	} else {
 		out = list(est=blip,SL.cate.fun=SL.cate.fun,SL=SL.objs,Qbar=Qbar)
