@@ -273,7 +273,7 @@ sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.li
 
 	# Print a message clarifying to the user what the resource constraint is imposing.
 	if(kappa<1){
-		print(paste0("The resource constraint imposes that at most a kappa=",kappa," proportion of the population can receive treatment ",txs[1]"."))
+		print(paste0("The resource constraint imposes that at most a kappa=",kappa," proportion of the population can receive treatment ",txs[1],"."))
 	}
 
 	# If baseline.probs is set to NULL, then the mean outcome under the optimal rule is reported (i.e., this value is not contrasted against anything).
