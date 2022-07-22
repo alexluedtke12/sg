@@ -271,6 +271,17 @@ sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.li
 		stop("folds must specified if Q0 is specified.")
 	}
 
+	# Print a message clarifying to the user what the resource constraint is imposing.
+	if(kappa<1){
+		print(paste0("The resource constraint imposes that at most a kappa=",kappa," proportion of the population can receive treatment ",txs[1]"."))
+	}
+
+	# If baseline.probs is set to NULL, then the mean outcome under the optimal rule is reported (i.e., this value is not contrasted against anything).
+	# To achieve this, we set baseline.probs to be a vector of zeros
+	if(length(baseline.probs)==0){
+		baseline.probs = rep(0,length(txs))
+	}
+
 	# reformat SL.library so that it is a list of length-1 or length-2 vectors
 	# (where the first entry in a length-2 vector is the learning algorithm,
 	#  the second is the screening algorithm)
