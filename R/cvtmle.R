@@ -282,6 +282,13 @@ sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.li
 		baseline.probs = rep(0,length(txs))
 	}
 
+	# if any Y outcomes are missing (Delta==0), replace NAs by zero
+	# note: the entries of Y with missing values are not used in downstream code,
+	#       but if they're coded as NA then .sgtmle will yield an NA confidence interval
+	#		due to the appearance of a weight of 0 times an NA outcome in the computation
+	#		of the influence function
+	Y[Delta==0 & is.na(Y)] = 0
+
 	# reformat SL.library so that it is a list of length-1 or length-2 vectors
 	# (where the first entry in a length-2 vector is the learning algorithm,
 	#  the second is the screening algorithm)
