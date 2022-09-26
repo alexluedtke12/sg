@@ -1,7 +1,7 @@
 # Standard deviation truncated at sig.trunc
 # g.est is vector giving estimated probability of A=1 given W
 
-.sgtmle = function(W,A,Y,txs,Q.est,blip.est,g.est,baseline.probs,family,kappa=1,sig.trunc=0.1,alpha=0.05,trunc.Q=c(0.005,0.995),obsWeights=NULL,RR=FALSE){
+.sgtmle = function(W,A,Y,Delta,txs,Q.est,blip.est,g.est,baseline.probs,family,kappa=1,sig.trunc=0.1,alpha=0.05,trunc.Q=c(0.005,0.995),obsWeights=NULL,RR=FALSE){
 	require(Hmisc)
 	n = nrow(W)
 	if(is.null(obsWeights)) obsWeights = rep(1,length(Y))
@@ -53,7 +53,7 @@
 
 	H = Reduce("+",lapply(seq(txs),function(i){
 			a = txs[i]
-			(A==a)*(g.star[,i]-baseline.probs[i])/g.est[,i]
+			Delta*(A==a)*(g.star[,i]-baseline.probs[i])/g.est[,i]
 		}))
 
 	eps = suppressWarnings(coef(glm(Y ~ -1 + offset(offs) + H,family=family,weights=obsWeights)))
@@ -74,7 +74,7 @@
 
 	if(RR){ # Get a targeted estimate of mean outcome under baseline.probs, and then add this to the contrast from the previous
 		offs.bp = family$linkfun(Reduce("+",lapply(seq(txs),function(i){baseline.probs[i]*Q.est[,i]})))
-		H.bp = Reduce("+",lapply(seq(txs),function(i){baseline.probs[i]*(A==txs[i])/g.est[,i]}))
+		H.bp = Reduce("+",lapply(seq(txs),function(i){baseline.probs[i]*Delta*(A==txs[i])/g.est[,i]}))
 		eps.bp = suppressWarnings(coef(glm(Y ~ -1 + offset(offs.bp) + H.bp,family=family,weights=obsWeights)))
 		Qbp.star = family$linkinv(offs.bp + eps.bp * Reduce("+",lapply(seq(txs),function(i){baseline.probs[i]/g.est[,i]})))
 		EYbp.star = mean(obsWeights * Qbp.star)
@@ -312,10 +312,10 @@ sg.cvtmle = function(W,A,Y,SL.library,Delta=rep(1,length(A)),OR.SL.library=SL.li
 		g.est = init.ests$g.est
 		lib.blip.est = init.ests$lib.blip.est
 
-		out = .sgtmle(W,A,Y,txs,Q.est,blip.est,g.est,baseline.probs,family=family,kappa=kappa,sig.trunc=sig.trunc,alpha=alpha,obsWeights=obsWeights,RR=RR)
+		out = .sgtmle(W,A,Y,Delta,txs,Q.est,blip.est,g.est,baseline.probs,family=family,kappa=kappa,sig.trunc=sig.trunc,alpha=alpha,obsWeights=obsWeights,RR=RR)
 		if(lib.ests){
 			out.lib = lapply(lib.blip.est,function(lbe.curr){
-				return(.sgtmle(W,A,Y,txs,Q.est,lbe.curr,g.est,baseline.probs,family=family,kappa=kappa,sig.trunc=sig.trunc,alpha=alpha,obsWeights=obsWeights,RR=RR))
+				return(.sgtmle(W,A,Y,Delta,txs,Q.est,lbe.curr,g.est,baseline.probs,family=family,kappa=kappa,sig.trunc=sig.trunc,alpha=alpha,obsWeights=obsWeights,RR=RR))
 			})
 			out.list = list(ests=c(out$est,sapply(out.lib,function(x){x$est})),vars=c(var(out$ic),sapply(out.lib,function(x){var(x$ic)})),algs=c('SuperLearner',SL.library))
 		} else {
