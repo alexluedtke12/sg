@@ -3,3 +3,4 @@
 export(sg.SL)
 export(sg.cvtmle)
 export(sg.mart)
+S3method(predict, sg.SL)
